@@ -1,11 +1,14 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from "vue"
-import { useRoute } from "vue-router"
+import { useRoute, useRouter } from "vue-router"
+import { useAuthStore } from './stores/authStore'
 
 const sidebarOpen = ref(true)
 const productsMenuOpen = ref(true)
 const isMobile = ref(false)
 const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
 
 // Check if mobile on mount and resize
 const checkMobile = () => {
@@ -39,6 +42,11 @@ const isProductsSection = computed(() => {
   return ['/products', '/categories', '/units', '/product'].includes(route.path)
 })
 
+// Check if current route is login page (no layout needed)
+const isLoginPage = computed(() => {
+  return route.path === '/login'
+})
+
 // Auto-expand products menu when navigating to a product-related page
 watch(() => route.path, (newPath) => {
   if (['/products', '/categories', '/units', '/product'].includes(newPath)) {
@@ -52,10 +60,23 @@ watch(() => route.path, (newPath) => {
     }
   }
 })
+
+const handleLogout = () => {
+  if (confirm('Are you sure you want to logout?')) {
+    authStore.logout()
+    router.push('/login')
+  }
+}
 </script>
 
 <template>
-  <div class="d-flex">
+  <!-- Login page - No layout -->
+  <div v-if="isLoginPage">
+    <router-view />
+  </div>
+
+  <!-- Main app - With sidebar and navbar -->
+  <div v-else class="d-flex">
 
     <!-- Sidebar -->
     <aside
@@ -249,9 +270,17 @@ watch(() => route.path, (newPath) => {
           <span class="navbar-brand mb-0 h4">Welcome, User</span>
         </div>
         
-        <!-- Right side (can add user menu, notifications, etc.) -->
-        <div>
-          <!-- Add user profile, logout, etc. here -->
+        <!-- Right side - User menu and logout -->
+        <div class="d-flex align-items-center gap-2">
+          <span class="text-muted small">{{ authStore.user?.username || 'User' }}</span>
+          <button 
+            class="btn btn-outline-danger btn-sm"
+            @click="handleLogout"
+            title="Logout"
+          >
+            <i class="bi bi-box-arrow-right"></i>
+            <span class="ms-1 d-none d-md-inline">Logout</span>
+          </button>
         </div>
       </nav>
 
