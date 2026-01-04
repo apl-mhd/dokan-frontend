@@ -1,80 +1,61 @@
 <template>
   <div class="container-fluid">
-    <div class="row mb-4">
-      <div class="col">
-        <h2 class="mb-3">
-          <i class="bi bi-box-seam me-2"></i>Product Management
-        </h2>
-      </div>
-      <div class="col-auto">
-        <button class="btn btn-primary" @click="showCreateModal">
+    <!-- Page Header -->
+    <PageHeader title="Product Management" icon="bi-box-seam">
+      <template #actions>
+        <button class="btn btn-primary" @click="handleCreate">
           <i class="bi bi-plus-circle me-2"></i>Add Product
         </button>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
-    <!-- Loading Spinner -->
-    <div v-if="productStore.loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
-      </div>
-    </div>
+    <!-- Loading State -->
+    <LoadingSpinner v-if="productStore.loading" />
 
-    <!-- Error Alert -->
-    <div v-if="productStore.error" class="alert alert-danger" role="alert">
-      <i class="bi bi-exclamation-triangle me-2"></i>{{ productStore.error }}
-    </div>
+    <!-- Error State -->
+    <ErrorAlert :error="productStore.error" title="Error" dismissible @dismiss="productStore.error = null" />
 
-    <!-- Products Table -->
-    <div v-else class="card shadow-sm">
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover">
-            <thead class="table-light">
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Category</th>
-                <th>Base Unit</th>
-                <th>Description</th>
-                <th>Created At</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="product in productStore.products" :key="product.id">
-                <td>{{ product.id }}</td>
-                <td>
-                  <strong>{{ product.name }}</strong>
-                </td>
-                <td>
-                  <span class="badge bg-secondary">{{ product.category_name || 'N/A' }}</span>
-                </td>
-                <td>{{ product.base_unit_name || 'N/A' }}</td>
-                <td>{{ product.description || '-' }}</td>
-                <td>{{ formatDate(product.created_at) }}</td>
-                <td>
-                  <button class="btn btn-sm btn-outline-primary me-2" @click="editProduct(product)" title="Edit">
-                    <i class="bi bi-pencil"></i>
-                  </button>
-                  <button class="btn btn-sm btn-outline-danger" @click="confirmDelete(product)" title="Delete">
-                    <i class="bi bi-trash"></i>
-                  </button>
-                </td>
-              </tr>
-              <tr v-if="productStore.products.length === 0 && !productStore.loading">
-                <td colspan="7" class="text-center text-muted py-4">
-                  No products found. Click "Add Product" to create one.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+    <!-- Data Table -->
+    <DataTable
+      v-if="!productStore.loading"
+      :columns="columns"
+      :items="productStore.products || []"
+      :pagination="paginationData"
+      empty-message="No products found. Click 'Add Product' to create one."
+      @page-change="handlePageChange"
+    >
+      <template #body="{ items }">
+        <tr v-for="product in items" :key="product.id">
+          <td>{{ product.id }}</td>
+          <td><strong>{{ product.name }}</strong></td>
+          <td>
+            <span class="badge bg-secondary">{{ product.category_name || 'N/A' }}</span>
+          </td>
+          <td>{{ product.base_unit_name || 'N/A' }}</td>
+          <td>{{ truncate(product.description, 50) }}</td>
+          <td>{{ formatDate(product.created_at) }}</td>
+          <td>
+            <button
+              class="btn btn-sm btn-outline-primary me-2"
+              @click="handleEdit(product)"
+              title="Edit"
+            >
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button
+              class="btn btn-sm btn-outline-danger"
+              @click="handleDelete(product)"
+              title="Delete"
+            >
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>
+        </tr>
+      </template>
+    </DataTable>
 
     <!-- Create/Edit Modal -->
-    <div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true" ref="modalRef">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" ref="modalRef">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header">
@@ -82,7 +63,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <form @submit.prevent="saveProduct">
+            <form @submit.prevent="handleSave">
               <div class="row">
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Product Name <span class="text-danger">*</span></label>
@@ -130,7 +111,7 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" @click="saveProduct">
+            <button type="button" class="btn btn-primary" @click="handleSave">
               <i class="bi bi-save me-2"></i>{{ isEditing ? 'Update' : 'Save' }}
             </button>
           </div>
@@ -141,13 +122,29 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useProductStore } from '../stores/product.store'
-import { Modal } from 'bootstrap'
+import { useModal } from '../composables/useModal'
+import { useFormatter } from '../composables/useFormatter'
+import { useConfirm } from '../composables/useConfirm'
+import { usePagination } from '../composables/usePagination'
 
+// Components
+import PageHeader from '../components/common/PageHeader.vue'
+import LoadingSpinner from '../components/common/LoadingSpinner.vue'
+import ErrorAlert from '../components/common/ErrorAlert.vue'
+import DataTable from '../components/common/DataTable.vue'
+
+// Stores
 const productStore = useProductStore()
-const modalRef = ref(null)
-let modalInstance = null
+
+// Composables
+const { modalRef, show: showModal, hide: hideModal } = useModal()
+const { formatDate, truncate } = useFormatter()
+const { confirmDelete } = useConfirm()
+const pagination = usePagination(10)
+
+// State
 const isEditing = ref(false)
 const selectedProduct = ref(null)
 
@@ -158,21 +155,54 @@ const formData = ref({
   description: ''
 })
 
-onMounted(() => {
-  productStore.fetchProducts()
+// Table columns definition
+const columns = [
+  { key: 'id', label: 'ID', width: '80px' },
+  { key: 'name', label: 'Name' },
+  { key: 'category', label: 'Category' },
+  { key: 'base_unit', label: 'Base Unit' },
+  { key: 'description', label: 'Description' },
+  { key: 'created_at', label: 'Created At' },
+  { key: 'actions', label: 'Actions', width: '150px' }
+]
+
+// Computed pagination data for DataTable
+const paginationData = computed(() => ({
+  currentPage: pagination.currentPage.value,
+  totalPages: pagination.totalPages.value,
+  totalItems: pagination.totalItems.value,
+  startIndex: pagination.startIndex.value,
+  endIndex: pagination.endIndex.value,
+  hasNextPage: pagination.hasNextPage.value,
+  hasPrevPage: pagination.hasPrevPage.value
+}))
+
+// Lifecycle
+onMounted(async () => {
+  await fetchProducts()
 })
 
-const showCreateModal = () => {
+// Methods
+const fetchProducts = async () => {
+  await productStore.fetchProducts(pagination.getParams())
+  if (productStore.pagination) {
+    pagination.updateFromResponse(productStore.pagination)
+  }
+}
+
+const handlePageChange = async (page) => {
+  pagination.goToPage(page)
+  await fetchProducts()
+}
+
+const handleCreate = () => {
   isEditing.value = false
   selectedProduct.value = null
   resetForm()
-  if (!modalInstance) {
-    modalInstance = new Modal(modalRef.value)
-  }
-  modalInstance.show()
+  showModal()
 }
 
-const editProduct = (product) => {
+const handleEdit = (product) => {
   isEditing.value = true
   selectedProduct.value = product
   formData.value = {
@@ -181,32 +211,34 @@ const editProduct = (product) => {
     base_unit: product.base_unit,
     description: product.description || ''
   }
-  if (!modalInstance) {
-    modalInstance = new Modal(modalRef.value)
-  }
-  modalInstance.show()
+  showModal()
 }
 
-const saveProduct = async () => {
+const handleSave = async () => {
   try {
     if (isEditing.value) {
       await productStore.updateProduct(selectedProduct.value.id, formData.value)
     } else {
       await productStore.createProduct(formData.value)
     }
-    modalInstance.hide()
+    hideModal()
     resetForm()
+    await fetchProducts()
   } catch (error) {
-    alert('Error saving product: ' + (error.response?.data?.message || error.message))
+    console.error('Error saving product:', error)
+    // Error is handled by store and displayed in ErrorAlert
   }
 }
 
-const confirmDelete = async (product) => {
-  if (confirm(`Are you sure you want to delete "${product.name}"?`)) {
+const handleDelete = async (product) => {
+  const confirmed = await confirmDelete(product.name, 'product')
+  if (confirmed) {
     try {
       await productStore.deleteProduct(product.id)
+      await fetchProducts()
     } catch (error) {
-      alert('Error deleting product: ' + (error.response?.data?.message || error.message))
+      console.error('Error deleting product:', error)
+      // Error is handled by store and displayed in ErrorAlert
     }
   }
 }
@@ -219,22 +251,11 @@ const resetForm = () => {
     description: ''
   }
 }
-
-const formatDate = (dateString) => {
-  if (!dateString) return '-'
-  return new Date(dateString).toLocaleDateString()
-}
 </script>
 
 <style scoped>
-.table th {
-  font-weight: 600;
-  color: #495057;
-}
-
 .badge {
   font-size: 0.85rem;
   font-weight: 500;
 }
 </style>
-

@@ -6,14 +6,38 @@ export const useSupplierStore = defineStore('supplier', () => {
   const suppliers = ref([])
   const loading = ref(false)
   const error = ref(null)
+  const pagination = ref({
+    currentPage: 1,
+    pageSize: 10,
+    totalItems: 0,
+    totalPages: 0
+  })
 
   // Fetch all suppliers
-  const fetchSuppliers = async () => {
+  const fetchSuppliers = async (params = {}) => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.get('/suppliers/')
-      suppliers.value = response.data || []
+      const response = await api.get('/suppliers/', { params })
+      
+      // Handle paginated response
+      if (response.data.results) {
+        suppliers.value = response.data.results
+        pagination.value = {
+          currentPage: params.page || 1,
+          pageSize: params.page_size || 10,
+          totalItems: response.data.count || 0,
+          totalPages: Math.ceil((response.data.count || 0) / (params.page_size || 10))
+        }
+      } else if (response.data.data) {
+        suppliers.value = response.data.data || []
+        pagination.value.totalItems = suppliers.value.length
+        pagination.value.totalPages = 1
+      } else {
+        suppliers.value = response.data || []
+        pagination.value.totalItems = suppliers.value.length
+        pagination.value.totalPages = 1
+      }
     } catch (err) {
       error.value = err.response?.data?.message || 'Failed to fetch suppliers'
       console.error('Error fetching suppliers:', err)
@@ -92,6 +116,7 @@ export const useSupplierStore = defineStore('supplier', () => {
     suppliers,
     loading,
     error,
+    pagination,
     fetchSuppliers,
     fetchSupplier,
     createSupplier,

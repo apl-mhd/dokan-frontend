@@ -1,83 +1,70 @@
 <template>
   <div class="container-fluid">
-    <div class="row mb-4">
-      <div class="col">
-        <h2 class="mb-3">
-          <i class="bi bi-cash-coin me-2"></i>Sale Management
-        </h2>
-      </div>
-      <div class="col-auto">
-        <button class="btn btn-primary" @click="showCreateModal">
+    <!-- Page Header -->
+    <PageHeader title="Sale Management" icon="bi-cash-coin">
+      <template #actions>
+        <button class="btn btn-primary" @click="handleCreate">
           <i class="bi bi-plus-circle me-2"></i>New Sale
         </button>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
-    <!-- Loading Spinner -->
-    <div v-if="saleStore.loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
-      </div>
-    </div>
+    <!-- Loading State -->
+    <LoadingSpinner v-if="saleStore.loading" />
 
-    <!-- Error Alert -->
-    <div v-if="saleStore.error" class="alert alert-danger" role="alert">
-      <i class="bi bi-exclamation-triangle me-2"></i>{{ saleStore.error }}
-    </div>
+    <!-- Error State -->
+    <ErrorAlert :error="saleStore.error" title="Error" dismissible @dismiss="saleStore.error = null" />
 
-    <!-- Sales Table -->
-    <div v-else class="card shadow-sm">
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover">
-            <thead class="table-light">
-              <tr>
-                <th>Invoice #</th>
-                <th>Customer</th>
-                <th>Warehouse</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th>Grand Total</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="sale in saleStore.sales" :key="sale.id">
-                <td><strong>{{ sale.invoice_number || sale.id }}</strong></td>
-                <td>{{ sale.customer_name || `Customer ${sale.customer}` }}</td>
-                <td>{{ sale.warehouse_name || `Warehouse ${sale.warehouse}` }}</td>
-                <td>{{ formatDate(sale.invoice_date) }}</td>
-                <td>
-                  <span class="badge" :class="getStatusClass(sale.status)">
-                    {{ sale.status }}
-                  </span>
-                </td>
-                <td><strong>৳{{ sale.grand_total }}</strong></td>
-                <td>
-                  <button class="btn btn-sm btn-outline-info me-2" @click="viewSale(sale)" title="View">
-                    <i class="bi bi-eye"></i>
-                  </button>
-                  <button class="btn btn-sm btn-outline-primary me-2" @click="editSale(sale)" title="Edit">
-                    <i class="bi bi-pencil"></i>
-                  </button>
-                  <button class="btn btn-sm btn-outline-danger" @click="confirmDelete(sale)" title="Delete">
-                    <i class="bi bi-trash"></i>
-                  </button>
-                </td>
-              </tr>
-              <tr v-if="saleStore.sales.length === 0 && !saleStore.loading">
-                <td colspan="7" class="text-center text-muted py-4">
-                  No sales found. Click "New Sale" to create one.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+    <!-- Data Table -->
+    <DataTable
+      v-if="!saleStore.loading"
+      :columns="columns"
+      :items="saleStore.sales || []"
+      :pagination="paginationData"
+      empty-message="No sales found. Click 'New Sale' to create one."
+      @page-change="handlePageChange"
+    >
+      <template #body="{ items }">
+        <tr v-for="sale in items" :key="sale.id">
+          <td><strong>{{ sale.invoice_number || sale.id }}</strong></td>
+          <td>{{ sale.customer_name || `Customer ${sale.customer}` }}</td>
+          <td>{{ sale.warehouse_name || `Warehouse ${sale.warehouse}` }}</td>
+          <td>{{ formatDate(sale.invoice_date) }}</td>
+          <td>
+            <span class="badge" :class="getStatusClass(sale.status, { delivered: 'bg-success' })">
+              {{ sale.status }}
+            </span>
+          </td>
+          <td><strong>{{ formatCurrency(sale.grand_total) }}</strong></td>
+          <td>
+            <button
+              class="btn btn-sm btn-outline-info me-2"
+              @click="handleView(sale)"
+              title="View"
+            >
+              <i class="bi bi-eye"></i>
+            </button>
+            <button
+              class="btn btn-sm btn-outline-primary me-2"
+              @click="handleEdit(sale)"
+              title="Edit"
+            >
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button
+              class="btn btn-sm btn-outline-danger"
+              @click="handleDelete(sale)"
+              title="Delete"
+            >
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>
+        </tr>
+      </template>
+    </DataTable>
 
     <!-- Create/Edit Modal -->
-    <div class="modal fade" id="saleModal" tabindex="-1" aria-hidden="true" ref="modalRef">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" ref="modalRef">
       <div class="modal-dialog modal-xl">
         <div class="modal-content">
           <div class="modal-header">
@@ -96,7 +83,7 @@
                   </option>
                 </select>
               </div>
-              
+
               <div class="col-md-3">
                 <label class="form-label">Warehouse <span class="text-danger">*</span></label>
                 <select v-model="formData.warehouse" class="form-select" required>
@@ -122,97 +109,19 @@
               </div>
             </div>
 
-            <!-- Add Item Section -->
-            <div class="card mb-3">
-              <div class="card-header bg-light">
-                <strong>Add Items</strong>
-              </div>
-              <div class="card-body">
-                <div class="row align-items-end">
-                  <div class="col-md-3">
-                    <label class="form-label">Product</label>
-                    <select v-model="currentItem.product" class="form-select" @change="loadProductUnits">
-                      <option value="">Select Product</option>
-                      <option v-for="product in productStore.products" :key="product.id" :value="product.id">
-                        {{ product.name }}
-                      </option>
-                    </select>
-                  </div>
-
-                  <div class="col-md-2">
-                    <label class="form-label">Unit</label>
-                    <select v-model="currentItem.unit" class="form-select">
-                      <option value="">Select Unit</option>
-                      <option v-for="unit in availableUnits" :key="unit.id" :value="unit.id">
-                        {{ unit.name }}
-                      </option>
-                    </select>
-                  </div>
-
-                  <div class="col-md-2">
-                    <label class="form-label">Quantity</label>
-                    <input v-model.number="currentItem.quantity" type="number" step="0.0001" class="form-control" @input="calculateLineTotal" />
-                  </div>
-
-                  <div class="col-md-2">
-                    <label class="form-label">Unit Price</label>
-                    <input v-model.number="currentItem.unit_price" type="number" step="0.01" class="form-control" @input="calculateLineTotal" />
-                  </div>
-
-                  <div class="col-md-2">
-                    <label class="form-label">Line Total</label>
-                    <input v-model="currentItem.line_total" type="number" step="0.01" class="form-control" readonly />
-                  </div>
-
-                  <div class="col-md-1">
-                    <button type="button" class="btn btn-success w-100" @click="addItem">
-                      <i class="bi bi-plus"></i>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Items Table -->
-            <div class="table-responsive mb-3">
-              <table class="table table-bordered">
-                <thead class="table-light">
-                  <tr>
-                    <th>#</th>
-                    <th>Product</th>
-                    <th>Unit</th>
-                    <th>Quantity</th>
-                    <th>Unit Price</th>
-                    <th>Line Total</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(item, index) in formData.items" :key="index">
-                    <td>{{ index + 1 }}</td>
-                    <td>{{ getProductName(item.product) }}</td>
-                    <td>{{ getUnitName(item.unit) }}</td>
-                    <td>{{ item.quantity }}</td>
-                    <td>৳{{ item.unit_price }}</td>
-                    <td><strong>৳{{ item.line_total || (item.quantity * item.unit_price) }}</strong></td>
-                    <td>
-                      <button type="button" class="btn btn-sm btn-danger" @click="removeItem(index)">
-                        <i class="bi bi-trash"></i>
-                      </button>
-                    </td>
-                  </tr>
-                  <tr v-if="formData.items.length === 0">
-                    <td colspan="7" class="text-center text-muted">No items added</td>
-                  </tr>
-                </tbody>
-                <tfoot v-if="formData.items.length > 0">
-                  <tr class="table-success">
-                    <td colspan="5" class="text-end"><strong>Grand Total:</strong></td>
-                    <td colspan="2"><strong>৳{{ calculateGrandTotal() }}</strong></td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+            <!-- Invoice Items -->
+            <InvoiceItemsTable
+              ref="invoiceItemsRef"
+              :items="formData.items"
+              :products="productStore.products"
+              :available-units="availableUnits"
+              :show-base-unit-qty="false"
+              :show-base-unit-note="false"
+              add-item-title="Add Items"
+              @add-item="addItem"
+              @remove-item="removeItem"
+              @product-change="loadProductUnits"
+            />
 
             <!-- Notes -->
             <div class="mb-3">
@@ -222,7 +131,12 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" @click="saveSale" :disabled="formData.items.length === 0">
+            <button
+              type="button"
+              class="btn btn-primary"
+              @click="handleSave"
+              :disabled="formData.items.length === 0"
+            >
               <i class="bi bi-save me-2"></i>{{ isEditing ? 'Update' : 'Save' }} Sale
             </button>
           </div>
@@ -233,23 +147,40 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useSaleStore } from '../stores/sale.store'
 import { useCustomerStore } from '../stores/customer.store'
 import { useWarehouseStore } from '../stores/warehouse.store'
 import { useProductStore } from '../stores/product.store'
-import { Modal } from 'bootstrap'
+import { useModal } from '../composables/useModal'
+import { useFormatter } from '../composables/useFormatter'
+import { useConfirm } from '../composables/useConfirm'
+import { usePagination } from '../composables/usePagination'
 
+// Components
+import PageHeader from '../components/common/PageHeader.vue'
+import LoadingSpinner from '../components/common/LoadingSpinner.vue'
+import ErrorAlert from '../components/common/ErrorAlert.vue'
+import DataTable from '../components/common/DataTable.vue'
+import InvoiceItemsTable from '../components/common/InvoiceItemsTable.vue'
+
+// Stores
 const saleStore = useSaleStore()
 const customerStore = useCustomerStore()
 const warehouseStore = useWarehouseStore()
 const productStore = useProductStore()
 
-const modalRef = ref(null)
-let modalInstance = null
+// Composables
+const { modalRef, show: showModal, hide: hideModal } = useModal()
+const { formatDate, formatCurrency, getStatusClass } = useFormatter()
+const { confirmDelete } = useConfirm()
+const pagination = usePagination(10)
+
+// State
 const isEditing = ref(false)
 const selectedSale = ref(null)
 const availableUnits = ref([])
+const invoiceItemsRef = ref(null)
 
 const formData = ref({
   customer: '',
@@ -260,32 +191,59 @@ const formData = ref({
   items: []
 })
 
-const currentItem = ref({
-  product: '',
-  unit: '',
-  quantity: 0,
-  unit_price: 0,
-  line_total: 0
+// Table columns definition
+const columns = [
+  { key: 'invoice_number', label: 'Invoice #', width: '120px' },
+  { key: 'customer', label: 'Customer' },
+  { key: 'warehouse', label: 'Warehouse' },
+  { key: 'invoice_date', label: 'Date', width: '120px' },
+  { key: 'status', label: 'Status', width: '100px' },
+  { key: 'grand_total', label: 'Grand Total', width: '120px' },
+  { key: 'actions', label: 'Actions', width: '180px' }
+]
+
+// Computed pagination data for DataTable
+const paginationData = computed(() => ({
+  currentPage: pagination.currentPage.value,
+  totalPages: pagination.totalPages.value,
+  totalItems: pagination.totalItems.value,
+  startIndex: pagination.startIndex.value,
+  endIndex: pagination.endIndex.value,
+  hasNextPage: pagination.hasNextPage.value,
+  hasPrevPage: pagination.hasPrevPage.value
+}))
+
+// Lifecycle
+onMounted(async () => {
+  await Promise.all([
+    fetchSales(),
+    customerStore.fetchCustomers(),
+    warehouseStore.fetchWarehouses(),
+    productStore.fetchProducts()
+  ])
 })
 
-onMounted(() => {
-  saleStore.fetchSales()
-  customerStore.fetchCustomers()
-  warehouseStore.fetchWarehouses()
-  productStore.fetchProducts()
-})
+// Methods
+const fetchSales = async () => {
+  await saleStore.fetchSales(pagination.getParams())
+  if (saleStore.pagination) {
+    pagination.updateFromResponse(saleStore.pagination)
+  }
+}
 
-const showCreateModal = () => {
+const handlePageChange = async (page) => {
+  pagination.goToPage(page)
+  await fetchSales()
+}
+
+const handleCreate = () => {
   isEditing.value = false
   selectedSale.value = null
   resetForm()
-  if (!modalInstance) {
-    modalInstance = new Modal(modalRef.value)
-  }
-  modalInstance.show()
+  showModal()
 }
 
-const editSale = async (sale) => {
+const handleEdit = async (sale) => {
   isEditing.value = true
   selectedSale.value = sale
   
@@ -301,54 +259,14 @@ const editSale = async (sale) => {
     items: fullSale.items || []
   }
   
-  if (!modalInstance) {
-    modalInstance = new Modal(modalRef.value)
-  }
-  modalInstance.show()
+  showModal()
 }
 
-const viewSale = async (sale) => {
-  await editSale(sale)
+const handleView = async (sale) => {
+  await handleEdit(sale)
 }
 
-const loadProductUnits = async () => {
-  if (currentItem.value.product) {
-    availableUnits.value = await productStore.fetchProductUnits(currentItem.value.product)
-  }
-}
-
-const calculateLineTotal = () => {
-  currentItem.value.line_total = (currentItem.value.quantity * currentItem.value.unit_price).toFixed(2)
-}
-
-const addItem = () => {
-  if (!currentItem.value.product || !currentItem.value.unit || currentItem.value.quantity <= 0 || currentItem.value.unit_price < 0) {
-    alert('Please fill all item fields correctly')
-    return
-  }
-
-  formData.value.items.push({ ...currentItem.value })
-  
-  // Reset current item
-  currentItem.value = {
-    product: '',
-    unit: '',
-    quantity: 0,
-    unit_price: 0,
-    line_total: 0
-  }
-  availableUnits.value = []
-}
-
-const removeItem = (index) => {
-  formData.value.items.splice(index, 1)
-}
-
-const calculateGrandTotal = () => {
-  return formData.value.items.reduce((sum, item) => sum + parseFloat(item.line_total || (item.quantity * item.unit_price)), 0).toFixed(2)
-}
-
-const saveSale = async () => {
+const handleSave = async () => {
   if (!formData.value.customer || !formData.value.warehouse) {
     alert('Please select customer and warehouse')
     return
@@ -365,21 +283,41 @@ const saveSale = async () => {
     } else {
       await saleStore.createSale(formData.value)
     }
-    modalInstance.hide()
+    hideModal()
     resetForm()
+    await fetchSales()
   } catch (error) {
-    alert('Error saving sale: ' + (error.response?.data?.message || error.message))
+    console.error('Error saving sale:', error)
+    // Error is handled by store and displayed in ErrorAlert
   }
 }
 
-const confirmDelete = async (sale) => {
-  if (confirm(`Are you sure you want to delete sale ${sale.invoice_number || sale.id}?`)) {
+const handleDelete = async (sale) => {
+  const confirmed = await confirmDelete(sale.invoice_number || `#${sale.id}`, 'sale')
+  if (confirmed) {
     try {
       await saleStore.deleteSale(sale.id)
+      await fetchSales()
     } catch (error) {
-      alert('Error deleting sale: ' + (error.response?.data?.message || error.message))
+      console.error('Error deleting sale:', error)
+      // Error is handled by store and displayed in ErrorAlert
     }
   }
+}
+
+const loadProductUnits = async (productId) => {
+  if (productId) {
+    availableUnits.value = await productStore.fetchProductUnits(productId)
+  }
+}
+
+const addItem = (item) => {
+  formData.value.items.push({ ...item })
+  availableUnits.value = []
+}
+
+const removeItem = (index) => {
+  formData.value.items.splice(index, 1)
 }
 
 const resetForm = () => {
@@ -391,43 +329,10 @@ const resetForm = () => {
     notes: '',
     items: []
   }
-  currentItem.value = {
-    product: '',
-    unit: '',
-    quantity: 0,
-    unit_price: 0,
-    line_total: 0
-  }
   availableUnits.value = []
-}
-
-const formatDate = (dateString) => {
-  if (!dateString) return '-'
-  return new Date(dateString).toLocaleDateString()
-}
-
-const getStatusClass = (status) => {
-  const statusClasses = {
-    pending: 'bg-warning',
-    delivered: 'bg-success',
-    cancelled: 'bg-danger'
+  if (invoiceItemsRef.value) {
+    invoiceItemsRef.value.resetCurrentItem()
   }
-  return statusClasses[status] || 'bg-secondary'
-}
-
-const getProductName = (productId) => {
-  const product = productStore.products.find(p => p.id === productId)
-  return product ? product.name : `Product ${productId}`
-}
-
-const getUnitName = (unitId) => {
-  return `Unit ${unitId}`
 }
 </script>
 
-<style scoped>
-.table th {
-  font-weight: 600;
-  color: #495057;
-}
-</style>

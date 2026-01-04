@@ -6,14 +6,38 @@ export const useWarehouseStore = defineStore('warehouse', () => {
   const warehouses = ref([])
   const loading = ref(false)
   const error = ref(null)
+  const pagination = ref({
+    currentPage: 1,
+    pageSize: 10,
+    totalItems: 0,
+    totalPages: 0
+  })
 
   // Fetch all warehouses
-  const fetchWarehouses = async () => {
+  const fetchWarehouses = async (params = {}) => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.get('/warehouses/')
-      warehouses.value = response.data || []
+      const response = await api.get('/warehouses/', { params })
+      
+      // Handle paginated response
+      if (response.data.results) {
+        warehouses.value = response.data.results
+        pagination.value = {
+          currentPage: params.page || 1,
+          pageSize: params.page_size || 10,
+          totalItems: response.data.count || 0,
+          totalPages: Math.ceil((response.data.count || 0) / (params.page_size || 10))
+        }
+      } else if (response.data.data) {
+        warehouses.value = response.data.data || []
+        pagination.value.totalItems = warehouses.value.length
+        pagination.value.totalPages = 1
+      } else {
+        warehouses.value = response.data || []
+        pagination.value.totalItems = warehouses.value.length
+        pagination.value.totalPages = 1
+      }
     } catch (err) {
       error.value = err.response?.data?.message || 'Failed to fetch warehouses'
       console.error('Error fetching warehouses:', err)
@@ -92,6 +116,7 @@ export const useWarehouseStore = defineStore('warehouse', () => {
     warehouses,
     loading,
     error,
+    pagination,
     fetchWarehouses,
     fetchWarehouse,
     createWarehouse,

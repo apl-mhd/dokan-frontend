@@ -4,7 +4,7 @@ import { useRoute, useRouter } from "vue-router"
 import { useAuthStore } from './stores/authStore'
 
 const sidebarOpen = ref(true)
-const productsMenuOpen = ref(true)
+const productsMenuOpen = ref(false)
 const isMobile = ref(false)
 const route = useRoute()
 const router = useRouter()
@@ -79,17 +79,10 @@ const handleLogout = () => {
   <div v-else class="d-flex">
 
     <!-- Sidebar -->
-    <aside
-      class="sidebar bg-dark text-white"
-      :class="sidebarOpen ? 'sidebar-open' : 'sidebar-closed'"
-    >
+    <aside class="sidebar bg-dark text-white" :class="sidebarOpen ? 'sidebar-open' : 'sidebar-closed'">
       <div class="sidebar-header d-flex justify-content-between align-items-center p-3">
         <h3 class="mb-0" v-show="sidebarOpen">Dokan</h3>
-        <button 
-          class="btn btn-link text-white p-0 toggle-btn" 
-          @click="toggleSidebar"
-          title="Toggle Sidebar"
-        >
+        <button class="btn btn-link text-white p-0 toggle-btn" @click="toggleSidebar" title="Toggle Sidebar">
           <i class="bi" :class="sidebarOpen ? 'bi-chevron-left' : 'bi-chevron-right'"></i>
         </button>
       </div>
@@ -97,36 +90,21 @@ const handleLogout = () => {
       <ul class="nav flex-column gap-2 px-3 pb-3">
 
         <li class="nav-item">
-          <router-link
-            to="/"
-            class="nav-link"
-            :class="{ active: $route.path === '/' }"
-            :title="sidebarOpen ? '' : 'Dashboard'"
-          >
+          <router-link to="/" class="nav-link" :class="{ active: $route.path === '/' }" :title="sidebarOpen ? '' : 'Dashboard'">
             <i class="bi bi-speedometer2"></i>
             <span v-show="sidebarOpen" class="ms-2">Dashboard</span>
           </router-link>
         </li>
 
         <li class="nav-item">
-          <router-link
-            to="/purchase"
-            class="nav-link"
-            :class="{ active: $route.path === '/purchase' }"
-            :title="sidebarOpen ? '' : 'Purchase'"
-          >
+          <router-link to="/purchase" class="nav-link" :class="{ active: $route.path === '/purchase' }" :title="sidebarOpen ? '' : 'Purchase'">
             <i class="bi bi-bag-plus"></i>
             <span v-show="sidebarOpen" class="ms-2">Purchase</span>
           </router-link>
         </li>
 
         <li class="nav-item">
-          <router-link
-            to="/sale"
-            class="nav-link"
-            :class="{ active: $route.path === '/sale' }"
-            :title="sidebarOpen ? '' : 'Sale'"
-          >
+          <router-link to="/sale" class="nav-link" :class="{ active: $route.path === '/sale' }" :title="sidebarOpen ? '' : 'Sale'">
             <i class="bi bi-cash-coin"></i>
             <span v-show="sidebarOpen" class="ms-2">Sale</span>
           </router-link>
@@ -134,55 +112,31 @@ const handleLogout = () => {
 
         <!-- Products Parent Menu -->
         <li class="nav-item">
-          <div 
-            class="nav-link parent-menu"
-            :class="{ 'active': isProductsSection }"
-            @click="toggleProductsMenu"
-            :title="sidebarOpen ? '' : 'Products'"
-          >
+          <div class="nav-link parent-menu" :class="{ 'active': isProductsSection }" @click="toggleProductsMenu" :title="sidebarOpen ? '' : 'Products'">
             <i class="bi bi-box-seam"></i>
             <span v-show="sidebarOpen" class="ms-2 flex-grow-1">Products</span>
-            <i 
-              v-show="sidebarOpen"
-              class="bi chevron-icon ms-auto"
-              :class="productsMenuOpen ? 'bi-chevron-down' : 'bi-chevron-right'"
-            ></i>
+            <i v-show="sidebarOpen" class="bi chevron-icon ms-auto" :class="productsMenuOpen ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
           </div>
-          
+
           <!-- Products Submenu -->
-          <div 
-            class="submenu-collapse"
-            :class="{ 'show': productsMenuOpen && sidebarOpen }"
-          >
+          <div class="submenu-collapse" :class="{ 'show': productsMenuOpen && sidebarOpen }">
             <ul class="nav flex-column submenu">
               <li class="nav-item">
-                <router-link
-                  to="/products"
-                  class="nav-link submenu-link"
-                  :class="{ 'active': $route.path === '/products' }"
-                >
+                <router-link to="/products" class="nav-link submenu-link" :class="{ 'active': $route.path === '/products' }">
                   <i class="bi bi-box2"></i>
                   <span class="ms-2">All Products</span>
                 </router-link>
               </li>
-              
+
               <li class="nav-item">
-                <router-link
-                  to="/categories"
-                  class="nav-link submenu-link"
-                  :class="{ 'active': $route.path === '/categories' }"
-                >
+                <router-link to="/categories" class="nav-link submenu-link" :class="{ 'active': $route.path === '/categories' }">
                   <i class="bi bi-tags"></i>
                   <span class="ms-2">Categories</span>
                 </router-link>
               </li>
-              
+
               <li class="nav-item">
-                <router-link
-                  to="/units"
-                  class="nav-link submenu-link"
-                  :class="{ 'active': $route.path === '/units' }"
-                >
+                <router-link to="/units" class="nav-link submenu-link" :class="{ 'active': $route.path === '/units' }">
                   <i class="bi bi-rulers"></i>
                   <span class="ms-2">Units & Measures</span>
                 </router-link>
@@ -192,60 +146,35 @@ const handleLogout = () => {
         </li>
 
         <li class="nav-item">
-          <router-link
-            to="/stock"
-            class="nav-link"
-            :class="{ active: $route.path === '/stock' }"
-            :title="sidebarOpen ? '' : 'Stock'"
-          >
+          <router-link to="/stock" class="nav-link" :class="{ active: $route.path === '/stock' }" :title="sidebarOpen ? '' : 'Stock'">
             <i class="bi bi-boxes"></i>
             <span v-show="sidebarOpen" class="ms-2">Stock</span>
           </router-link>
         </li>
 
         <li class="nav-item">
-          <router-link
-            to="/supplier"
-            class="nav-link"
-            :class="{ active: $route.path === '/supplier' }"
-            :title="sidebarOpen ? '' : 'Supplier'"
-          >
+          <router-link to="/supplier" class="nav-link" :class="{ active: $route.path === '/supplier' }" :title="sidebarOpen ? '' : 'Supplier'">
             <i class="bi bi-people"></i>
             <span v-show="sidebarOpen" class="ms-2">Supplier</span>
           </router-link>
         </li>
 
         <li class="nav-item">
-          <router-link
-            to="/customer"
-            class="nav-link"
-            :class="{ active: $route.path === '/customer' }"
-            :title="sidebarOpen ? '' : 'Customer'"
-          >
+          <router-link to="/customer" class="nav-link" :class="{ active: $route.path === '/customer' }" :title="sidebarOpen ? '' : 'Customer'">
             <i class="bi bi-person-circle"></i>
             <span v-show="sidebarOpen" class="ms-2">Customer</span>
           </router-link>
         </li>
 
         <li class="nav-item">
-          <router-link
-            to="/warehouse"
-            class="nav-link"
-            :class="{ active: $route.path === '/warehouse' }"
-            :title="sidebarOpen ? '' : 'Warehouse'"
-          >
+          <router-link to="/warehouse" class="nav-link" :class="{ active: $route.path === '/warehouse' }" :title="sidebarOpen ? '' : 'Warehouse'">
             <i class="bi bi-building"></i>
             <span v-show="sidebarOpen" class="ms-2">Warehouse</span>
           </router-link>
         </li>
 
         <li class="nav-item">
-          <router-link
-            to="/payment"
-            class="nav-link"
-            :class="{ active: $route.path === '/payment' }"
-            :title="sidebarOpen ? '' : 'Payment'"
-          >
+          <router-link to="/payment" class="nav-link" :class="{ active: $route.path === '/payment' }" :title="sidebarOpen ? '' : 'Payment'">
             <i class="bi bi-credit-card"></i>
             <span v-show="sidebarOpen" class="ms-2">Payment</span>
           </router-link>
@@ -261,23 +190,16 @@ const handleLogout = () => {
       <nav class="navbar navbar-light bg-light shadow-sm px-3 d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center">
           <!-- Mobile Toggle Button -->
-          <button 
-            class="btn btn-outline-secondary d-lg-none me-3" 
-            @click="toggleSidebar"
-          >
+          <button class="btn btn-outline-secondary d-lg-none me-3" @click="toggleSidebar">
             <i class="bi bi-list"></i>
           </button>
           <span class="navbar-brand mb-0 h4">Welcome, User</span>
         </div>
-        
+
         <!-- Right side - User menu and logout -->
         <div class="d-flex align-items-center gap-2">
           <span class="text-muted small">{{ authStore.user?.username || 'User' }}</span>
-          <button 
-            class="btn btn-outline-danger btn-sm"
-            @click="handleLogout"
-            title="Logout"
-          >
+          <button class="btn btn-outline-danger btn-sm" @click="handleLogout" title="Logout">
             <i class="bi bi-box-arrow-right"></i>
             <span class="ms-1 d-none d-md-inline">Logout</span>
           </button>
@@ -292,11 +214,7 @@ const handleLogout = () => {
     </main>
 
     <!-- Mobile Overlay -->
-    <div 
-      v-if="sidebarOpen && isMobile"
-      class="sidebar-overlay"
-      @click="toggleSidebar"
-    ></div>
+    <div v-if="sidebarOpen && isMobile" class="sidebar-overlay" @click="toggleSidebar"></div>
 
   </div>
 </template>
@@ -468,16 +386,16 @@ const handleLogout = () => {
   .sidebar {
     z-index: 1000;
   }
-  
+
   .sidebar-closed {
     width: 0;
     overflow: hidden;
   }
-  
+
   .sidebar-closed + main {
     margin-left: 0;
   }
-  
+
   .sidebar-open {
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
   }
