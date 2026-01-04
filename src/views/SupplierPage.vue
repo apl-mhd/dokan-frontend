@@ -1,80 +1,63 @@
 <template>
   <div class="container-fluid">
-    <div class="row mb-4">
-      <div class="col">
-        <h2 class="mb-3">
-          <i class="bi bi-people me-2"></i>Supplier Management
-        </h2>
-      </div>
-      <div class="col-auto">
-        <button class="btn btn-primary" @click="showCreateModal">
+    <!-- Page Header -->
+    <PageHeader title="Supplier Management" icon="bi-truck">
+      <template #actions>
+        <button class="btn btn-primary" @click="handleCreate">
           <i class="bi bi-plus-circle me-2"></i>Add Supplier
         </button>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
-    <!-- Loading Spinner -->
-    <div v-if="supplierStore.loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
-      </div>
-    </div>
+    <!-- Loading State -->
+    <LoadingSpinner v-if="supplierStore.loading" />
 
-    <!-- Error Alert -->
-    <div v-if="supplierStore.error" class="alert alert-danger" role="alert">
-      <i class="bi bi-exclamation-triangle me-2"></i>{{ supplierStore.error }}
-    </div>
+    <!-- Error State -->
+    <ErrorAlert :error="supplierStore.error" title="Error" dismissible @dismiss="supplierStore.error = null" />
 
-    <!-- Suppliers Table -->
-    <div v-else class="card shadow-sm">
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover">
-            <thead class="table-light">
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Address</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="supplier in supplierStore.suppliers" :key="supplier.id">
-                <td>{{ supplier.id }}</td>
-                <td><strong>{{ supplier.name }}</strong></td>
-                <td>{{ supplier.email || '-' }}</td>
-                <td>{{ supplier.phone || '-' }}</td>
-                <td>{{ supplier.address || '-' }}</td>
-                <td>
-                  <span class="badge" :class="supplier.is_active ? 'bg-success' : 'bg-secondary'">
-                    {{ supplier.is_active ? 'Active' : 'Inactive' }}
-                  </span>
-                </td>
-                <td>
-                  <button class="btn btn-sm btn-outline-primary me-2" @click="editSupplier(supplier)" title="Edit">
-                    <i class="bi bi-pencil"></i>
-                  </button>
-                  <button class="btn btn-sm btn-outline-danger" @click="confirmDelete(supplier)" title="Delete">
-                    <i class="bi bi-trash"></i>
-                  </button>
-                </td>
-              </tr>
-              <tr v-if="supplierStore.suppliers.length === 0 && !supplierStore.loading">
-                <td colspan="7" class="text-center text-muted py-4">
-                  No suppliers found. Click "Add Supplier" to create one.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+    <!-- Data Table -->
+    <DataTable
+      v-if="!supplierStore.loading"
+      :columns="columns"
+      :items="supplierStore.suppliers || []"
+      :pagination="paginationData"
+      empty-message="No suppliers found. Click 'Add Supplier' to create one."
+      @page-change="handlePageChange"
+    >
+      <template #body="{ items }">
+        <tr v-for="supplier in items" :key="supplier.id">
+          <td>{{ supplier.id }}</td>
+          <td><strong>{{ supplier.name }}</strong></td>
+          <td>{{ supplier.email || '-' }}</td>
+          <td>{{ supplier.phone || '-' }}</td>
+          <td>{{ truncate(supplier.address, 40) }}</td>
+          <td>
+            <span class="badge" :class="supplier.is_active ? 'bg-success' : 'bg-secondary'">
+              {{ supplier.is_active ? 'Active' : 'Inactive' }}
+            </span>
+          </td>
+          <td>
+            <button
+              class="btn btn-sm btn-outline-primary me-2"
+              @click="handleEdit(supplier)"
+              title="Edit"
+            >
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button
+              class="btn btn-sm btn-outline-danger"
+              @click="handleDelete(supplier)"
+              title="Delete"
+            >
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>
+        </tr>
+      </template>
+    </DataTable>
 
     <!-- Create/Edit Modal -->
-    <div class="modal fade" id="supplierModal" tabindex="-1" aria-hidden="true" ref="modalRef">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" ref="modalRef">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header">
@@ -82,7 +65,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <form @submit.prevent="saveSupplier">
+            <form @submit.prevent="handleSave">
               <div class="row">
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Supplier Name <span class="text-danger">*</span></label>
@@ -139,7 +122,7 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" @click="saveSupplier">
+            <button type="button" class="btn btn-primary" @click="handleSave">
               <i class="bi bi-save me-2"></i>{{ isEditing ? 'Update' : 'Save' }}
             </button>
           </div>
@@ -150,13 +133,29 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useSupplierStore } from '../stores/supplier.store'
-import { Modal } from 'bootstrap'
+import { useModal } from '../composables/useModal'
+import { useFormatter } from '../composables/useFormatter'
+import { useConfirm } from '../composables/useConfirm'
+import { usePagination } from '../composables/usePagination'
 
+// Components
+import PageHeader from '../components/common/PageHeader.vue'
+import LoadingSpinner from '../components/common/LoadingSpinner.vue'
+import ErrorAlert from '../components/common/ErrorAlert.vue'
+import DataTable from '../components/common/DataTable.vue'
+
+// Stores
 const supplierStore = useSupplierStore()
-const modalRef = ref(null)
-let modalInstance = null
+
+// Composables
+const { modalRef, show: showModal, hide: hideModal } = useModal()
+const { truncate } = useFormatter()
+const { confirmDelete } = useConfirm()
+const pagination = usePagination(10)
+
+// State
 const isEditing = ref(false)
 const selectedSupplier = ref(null)
 
@@ -168,21 +167,54 @@ const formData = ref({
   is_active: true
 })
 
-onMounted(() => {
-  supplierStore.fetchSuppliers()
+// Table columns definition
+const columns = [
+  { key: 'id', label: 'ID', width: '80px' },
+  { key: 'name', label: 'Name' },
+  { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Phone' },
+  { key: 'address', label: 'Address' },
+  { key: 'status', label: 'Status', width: '100px' },
+  { key: 'actions', label: 'Actions', width: '150px' }
+]
+
+// Computed pagination data for DataTable
+const paginationData = computed(() => ({
+  currentPage: pagination.currentPage.value,
+  totalPages: pagination.totalPages.value,
+  totalItems: pagination.totalItems.value,
+  startIndex: pagination.startIndex.value,
+  endIndex: pagination.endIndex.value,
+  hasNextPage: pagination.hasNextPage.value,
+  hasPrevPage: pagination.hasPrevPage.value
+}))
+
+// Lifecycle
+onMounted(async () => {
+  await fetchSuppliers()
 })
 
-const showCreateModal = () => {
+// Methods
+const fetchSuppliers = async () => {
+  await supplierStore.fetchSuppliers(pagination.getParams())
+  if (supplierStore.pagination) {
+    pagination.updateFromResponse(supplierStore.pagination)
+  }
+}
+
+const handlePageChange = async (page) => {
+  pagination.goToPage(page)
+  await fetchSuppliers()
+}
+
+const handleCreate = () => {
   isEditing.value = false
   selectedSupplier.value = null
   resetForm()
-  if (!modalInstance) {
-    modalInstance = new Modal(modalRef.value)
-  }
-  modalInstance.show()
+  showModal()
 }
 
-const editSupplier = (supplier) => {
+const handleEdit = (supplier) => {
   isEditing.value = true
   selectedSupplier.value = supplier
   formData.value = {
@@ -192,32 +224,34 @@ const editSupplier = (supplier) => {
     address: supplier.address || '',
     is_active: supplier.is_active
   }
-  if (!modalInstance) {
-    modalInstance = new Modal(modalRef.value)
-  }
-  modalInstance.show()
+  showModal()
 }
 
-const saveSupplier = async () => {
+const handleSave = async () => {
   try {
     if (isEditing.value) {
       await supplierStore.updateSupplier(selectedSupplier.value.id, formData.value)
     } else {
       await supplierStore.createSupplier(formData.value)
     }
-    modalInstance.hide()
+    hideModal()
     resetForm()
+    await fetchSuppliers()
   } catch (error) {
-    alert('Error saving supplier: ' + (error.response?.data?.message || error.message))
+    console.error('Error saving supplier:', error)
+    // Error is handled by store and displayed in ErrorAlert
   }
 }
 
-const confirmDelete = async (supplier) => {
-  if (confirm(`Are you sure you want to delete "${supplier.name}"?`)) {
+const handleDelete = async (supplier) => {
+  const confirmed = await confirmDelete(supplier.name, 'supplier')
+  if (confirmed) {
     try {
       await supplierStore.deleteSupplier(supplier.id)
+      await fetchSuppliers()
     } catch (error) {
-      alert('Error deleting supplier: ' + (error.response?.data?.message || error.message))
+      console.error('Error deleting supplier:', error)
+      // Error is handled by store and displayed in ErrorAlert
     }
   }
 }
@@ -232,4 +266,3 @@ const resetForm = () => {
   }
 }
 </script>
-

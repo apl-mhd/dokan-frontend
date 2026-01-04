@@ -1,13 +1,7 @@
 <template>
   <div class="container-fluid">
-    <!-- Header -->
-    <div class="row mb-4">
-      <div class="col">
-        <h2 class="mb-3">
-          <i class="bi bi-rulers me-2"></i>Unit Management
-        </h2>
-      </div>
-    </div>
+    <!-- Page Header -->
+    <PageHeader title="Unit Management" icon="bi-rulers" />
 
     <!-- Tabs -->
     <ul class="nav nav-tabs mb-4" role="tablist">
@@ -43,156 +37,146 @@
       <div class="tab-pane fade show active" id="units" role="tabpanel">
         <div class="row mb-3">
           <div class="col">
-            <button class="btn btn-primary" @click="showCreateUnitModal">
+            <button class="btn btn-primary" @click="handleCreateUnit">
               <i class="bi bi-plus-circle me-2"></i>Add Unit
             </button>
           </div>
         </div>
 
-        <!-- Loading -->
-        <div v-if="unitStore.loading" class="text-center py-5">
-          <div class="spinner-border text-primary"></div>
-        </div>
+        <!-- Loading State -->
+        <LoadingSpinner v-if="unitStore.loading" />
+
+        <!-- Error State -->
+        <ErrorAlert :error="unitStore.error" title="Error" dismissible @dismiss="unitStore.error = null" />
 
         <!-- Units Table -->
-        <div v-else class="card shadow-sm">
-          <div class="card-body">
-            <div class="table-responsive">
-              <table class="table table-hover">
-                <thead class="table-light">
-                  <tr>
-                    <th>Name</th>
-                    <th>Category</th>
-                    <th>Conversion Factor</th>
-                    <th>Is Base Unit</th>
-                    <th>Created</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="unit in unitStore.units" :key="unit.id">
-                    <td><strong>{{ unit.name }}</strong></td>
-                    <td>
-                      <span class="badge bg-secondary" v-if="unit.unit_category_name">
-                        {{ unit.unit_category_name }}
-                      </span>
-                      <span class="text-muted" v-else>-</span>
-                    </td>
-                    <td>{{ unit.conversion_factor }}</td>
-                    <td>
-                      <span class="badge" :class="unit.is_base_unit ? 'bg-success' : 'bg-secondary'">
-                        {{ unit.is_base_unit ? 'Yes' : 'No' }}
-                      </span>
-                    </td>
-                    <td>{{ formatDate(unit.created_at) }}</td>
-                    <td>
-                      <button class="btn btn-sm btn-outline-primary me-2" @click="editUnit(unit)">
-                        <i class="bi bi-pencil"></i>
-                      </button>
-                      <button class="btn btn-sm btn-outline-danger" @click="confirmDeleteUnit(unit)">
-                        <i class="bi bi-trash"></i>
-                      </button>
-                    </td>
-                  </tr>
-                  <tr v-if="unitStore.units.length === 0">
-                    <td colspan="6" class="text-center text-muted py-4">
-                      No units found. Click "Add Unit" to create one.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <DataTable
+          v-if="!unitStore.loading"
+          :columns="unitColumns"
+          :items="unitStore.units || []"
+          empty-message="No units found. Click 'Add Unit' to create one."
+        >
+          <template #body="{ items }">
+            <tr v-for="unit in items" :key="unit.id">
+              <td>{{ unit.id }}</td>
+              <td><strong>{{ unit.name }}</strong></td>
+              <td>{{ unit.short_name || '-' }}</td>
+              <td>{{ unit.category_name || 'Uncategorized' }}</td>
+              <td>
+                <span v-if="unit.is_base_unit" class="badge bg-primary">Base Unit</span>
+                <span v-else class="badge bg-secondary">Derived Unit</span>
+              </td>
+              <td>
+                <button
+                  class="btn btn-sm btn-outline-primary me-2"
+                  @click="handleEditUnit(unit)"
+                  title="Edit"
+                >
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button
+                  class="btn btn-sm btn-outline-danger"
+                  @click="handleDeleteUnit(unit)"
+                  title="Delete"
+                >
+                  <i class="bi bi-trash"></i>
+                </button>
+              </td>
+            </tr>
+          </template>
+        </DataTable>
       </div>
 
       <!-- Unit Categories Tab -->
       <div class="tab-pane fade" id="unit-categories" role="tabpanel">
         <div class="row mb-3">
           <div class="col">
-            <button class="btn btn-primary" @click="showCreateUnitCategoryModal">
+            <button class="btn btn-primary" @click="handleCreateCategory">
               <i class="bi bi-plus-circle me-2"></i>Add Unit Category
             </button>
           </div>
         </div>
 
-        <!-- Loading -->
-        <div v-if="unitStore.loading" class="text-center py-5">
-          <div class="spinner-border text-primary"></div>
-        </div>
+        <!-- Loading State -->
+        <LoadingSpinner v-if="unitStore.loadingCategories" />
 
-        <!-- Unit Categories Grid -->
-        <div v-else class="row g-4">
-          <div v-for="category in unitStore.unitCategories" :key="category.id" class="col-md-4 col-lg-3">
-            <div class="card h-100 shadow-sm unit-category-card">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start">
-                  <h5 class="card-title">
-                    <i class="bi bi-collection text-info me-2"></i>{{ category.name }}
-                  </h5>
-                  <div class="dropdown">
-                    <button class="btn btn-sm btn-link text-muted" data-bs-toggle="dropdown">
-                      <i class="bi bi-three-dots-vertical"></i>
-                    </button>
-                    <ul class="dropdown-menu">
-                      <li>
-                        <a class="dropdown-item" href="#" @click.prevent="editUnitCategory(category)">
-                          <i class="bi bi-pencil me-2"></i>Edit
-                        </a>
-                      </li>
-                      <li><hr class="dropdown-divider"></li>
-                      <li>
-                        <a class="dropdown-item text-danger" href="#" @click.prevent="confirmDeleteUnitCategory(category)">
-                          <i class="bi bi-trash me-2"></i>Delete
-                        </a>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-                <p class="text-muted small mt-2">
-                  <i class="bi bi-calendar me-1"></i>{{ formatDate(category.created_at) }}
-                </p>
-              </div>
-            </div>
-          </div>
+        <!-- Error State -->
+        <ErrorAlert
+          :error="unitStore.categoriesError"
+          title="Error"
+          dismissible
+          @dismiss="unitStore.categoriesError = null"
+        />
 
-          <div v-if="unitStore.unitCategories.length === 0" class="col-12">
-            <div class="text-center py-5">
-              <i class="bi bi-collection display-1 text-muted"></i>
-              <p class="mt-3 text-muted">No unit categories found. Click "Add Unit Category" to create one.</p>
-            </div>
-          </div>
-        </div>
+        <!-- Unit Categories Table -->
+        <DataTable
+          v-if="!unitStore.loadingCategories"
+          :columns="categoryColumns"
+          :items="unitStore.unitCategories || []"
+          empty-message="No unit categories found. Click 'Add Unit Category' to create one."
+        >
+          <template #body="{ items }">
+            <tr v-for="category in items" :key="category.id">
+              <td>{{ category.id }}</td>
+              <td><strong>{{ category.name }}</strong></td>
+              <td>{{ truncate(category.description, 60) }}</td>
+              <td>
+                <button
+                  class="btn btn-sm btn-outline-primary me-2"
+                  @click="handleEditCategory(category)"
+                  title="Edit"
+                >
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button
+                  class="btn btn-sm btn-outline-danger"
+                  @click="handleDeleteCategory(category)"
+                  title="Delete"
+                >
+                  <i class="bi bi-trash"></i>
+                </button>
+              </td>
+            </tr>
+          </template>
+        </DataTable>
       </div>
     </div>
 
     <!-- Unit Modal -->
-    <div class="modal fade" id="unitModal" tabindex="-1" ref="unitModalRef">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" ref="unitModalRef">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">
-              <i class="bi bi-rulers me-2"></i>{{ isEditingUnit ? 'Edit Unit' : 'Add New Unit' }}
-            </h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <h5 class="modal-title">{{ isEditingUnit ? 'Edit Unit' : 'Add New Unit' }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <form @submit.prevent="saveUnit">
+            <form @submit.prevent="handleSaveUnit">
               <div class="mb-3">
                 <label class="form-label">Unit Name <span class="text-danger">*</span></label>
                 <input
                   v-model="unitFormData.name"
                   type="text"
                   class="form-control"
-                  placeholder="e.g., kg, liter, piece"
+                  placeholder="Enter unit name (e.g., Kilogram)"
                   required
                 />
               </div>
 
               <div class="mb-3">
+                <label class="form-label">Short Name</label>
+                <input
+                  v-model="unitFormData.short_name"
+                  type="text"
+                  class="form-control"
+                  placeholder="Enter short name (e.g., kg)"
+                />
+              </div>
+
+              <div class="mb-3">
                 <label class="form-label">Unit Category</label>
-                <select v-model="unitFormData.unit_category" class="form-select">
-                  <option :value="null">Select category (optional)</option>
+                <select v-model="unitFormData.category" class="form-select">
+                  <option value="">Select Category</option>
                   <option v-for="cat in unitStore.unitCategories" :key="cat.id" :value="cat.id">
                     {{ cat.name }}
                   </option>
@@ -200,36 +184,23 @@
               </div>
 
               <div class="mb-3">
-                <label class="form-label">Conversion Factor <span class="text-danger">*</span></label>
-                <input
-                  v-model.number="unitFormData.conversion_factor"
-                  type="number"
-                  step="0.0001"
-                  class="form-control"
-                  placeholder="e.g., 1.0000"
-                  required
-                />
-                <small class="form-text text-muted">
-                  Factor to convert to base unit (e.g., 1 kg = 1000 g, so gram = 0.001)
-                </small>
-              </div>
-
-              <div class="mb-3 form-check">
-                <input
-                  v-model="unitFormData.is_base_unit"
-                  type="checkbox"
-                  class="form-check-input"
-                  id="isBaseUnit"
-                />
-                <label class="form-check-label" for="isBaseUnit">
-                  Is Base Unit (conversion factor must be 1.0000)
-                </label>
+                <div class="form-check">
+                  <input
+                    v-model="unitFormData.is_base_unit"
+                    type="checkbox"
+                    class="form-check-input"
+                    id="isBaseUnit"
+                  />
+                  <label class="form-check-label" for="isBaseUnit">
+                    Is Base Unit
+                  </label>
+                </div>
               </div>
             </form>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" @click="saveUnit">
+            <button type="button" class="btn btn-primary" @click="handleSaveUnit">
               <i class="bi bi-save me-2"></i>{{ isEditingUnit ? 'Update' : 'Save' }}
             </button>
           </div>
@@ -237,35 +208,42 @@
       </div>
     </div>
 
-    <!-- Unit Category Modal -->
-    <div class="modal fade" id="unitCategoryModal" tabindex="-1" ref="unitCategoryModalRef">
+    <!-- Category Modal -->
+    <div class="modal fade" tabindex="-1" aria-hidden="true" ref="categoryModalRef">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">
-              <i class="bi bi-collection me-2"></i>{{ isEditingUnitCategory ? 'Edit Unit Category' : 'Add New Unit Category' }}
-            </h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <h5 class="modal-title">{{ isEditingCategory ? 'Edit Category' : 'Add New Category' }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <form @submit.prevent="saveUnitCategory">
+            <form @submit.prevent="handleSaveCategory">
               <div class="mb-3">
                 <label class="form-label">Category Name <span class="text-danger">*</span></label>
                 <input
-                  v-model="unitCategoryFormData.name"
+                  v-model="categoryFormData.name"
                   type="text"
                   class="form-control"
-                  placeholder="e.g., Weight, Volume, Length"
+                  placeholder="Enter category name"
                   required
-                  maxlength="50"
                 />
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Description</label>
+                <textarea
+                  v-model="categoryFormData.description"
+                  class="form-control"
+                  rows="3"
+                  placeholder="Enter category description"
+                ></textarea>
               </div>
             </form>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" @click="saveUnitCategory">
-              <i class="bi bi-save me-2"></i>{{ isEditingUnitCategory ? 'Update' : 'Save' }}
+            <button type="button" class="btn btn-primary" @click="handleSaveCategory">
+              <i class="bi bi-save me-2"></i>{{ isEditingCategory ? 'Update' : 'Save' }}
             </button>
           </div>
         </div>
@@ -277,80 +255,112 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useUnitStore } from '../stores/unit.store'
-import { Modal } from 'bootstrap'
+import { useModal } from '../composables/useModal'
+import { useFormatter } from '../composables/useFormatter'
+import { useConfirm } from '../composables/useConfirm'
 
+// Components
+import PageHeader from '../components/common/PageHeader.vue'
+import LoadingSpinner from '../components/common/LoadingSpinner.vue'
+import ErrorAlert from '../components/common/ErrorAlert.vue'
+import DataTable from '../components/common/DataTable.vue'
+
+// Stores
 const unitStore = useUnitStore()
-const unitModalRef = ref(null)
-const unitCategoryModalRef = ref(null)
-let unitModalInstance = null
-let unitCategoryModalInstance = null
 
+// Composables
+const { truncate } = useFormatter()
+const { confirmDelete } = useConfirm()
+
+// Unit Modal
+const { modalRef: unitModalRef, show: showUnitModal, hide: hideUnitModal } = useModal()
+
+// Category Modal
+const { modalRef: categoryModalRef, show: showCategoryModal, hide: hideCategoryModal } = useModal()
+
+// State
 const isEditingUnit = ref(false)
 const selectedUnit = ref(null)
 const unitFormData = ref({
   name: '',
-  unit_category: null,
-  conversion_factor: 1.0,
+  short_name: '',
+  category: '',
   is_base_unit: false
 })
 
-const isEditingUnitCategory = ref(false)
-const selectedUnitCategory = ref(null)
-const unitCategoryFormData = ref({
-  name: ''
+const isEditingCategory = ref(false)
+const selectedCategory = ref(null)
+const categoryFormData = ref({
+  name: '',
+  description: ''
 })
 
-onMounted(() => {
-  unitStore.fetchUnits()
-  unitStore.fetchUnitCategories()
+// Table columns
+const unitColumns = [
+  { key: 'id', label: 'ID', width: '80px' },
+  { key: 'name', label: 'Name' },
+  { key: 'short_name', label: 'Short Name', width: '120px' },
+  { key: 'category', label: 'Category' },
+  { key: 'type', label: 'Type', width: '120px' },
+  { key: 'actions', label: 'Actions', width: '150px' }
+]
+
+const categoryColumns = [
+  { key: 'id', label: 'ID', width: '80px' },
+  { key: 'name', label: 'Name' },
+  { key: 'description', label: 'Description' },
+  { key: 'actions', label: 'Actions', width: '150px' }
+]
+
+// Lifecycle
+onMounted(async () => {
+  await Promise.all([
+    unitStore.fetchUnits(),
+    unitStore.fetchUnitCategories()
+  ])
 })
 
 // Unit Methods
-const showCreateUnitModal = () => {
+const handleCreateUnit = () => {
   isEditingUnit.value = false
   selectedUnit.value = null
   resetUnitForm()
-  if (!unitModalInstance) {
-    unitModalInstance = new Modal(unitModalRef.value)
-  }
-  unitModalInstance.show()
+  showUnitModal()
 }
 
-const editUnit = (unit) => {
+const handleEditUnit = (unit) => {
   isEditingUnit.value = true
   selectedUnit.value = unit
   unitFormData.value = {
     name: unit.name,
-    unit_category: unit.unit_category,
-    conversion_factor: parseFloat(unit.conversion_factor),
-    is_base_unit: unit.is_base_unit
+    short_name: unit.short_name || '',
+    category: unit.category || '',
+    is_base_unit: unit.is_base_unit || false
   }
-  if (!unitModalInstance) {
-    unitModalInstance = new Modal(unitModalRef.value)
-  }
-  unitModalInstance.show()
+  showUnitModal()
 }
 
-const saveUnit = async () => {
+const handleSaveUnit = async () => {
   try {
     if (isEditingUnit.value) {
       await unitStore.updateUnit(selectedUnit.value.id, unitFormData.value)
     } else {
       await unitStore.createUnit(unitFormData.value)
     }
-    unitModalInstance.hide()
+    hideUnitModal()
     resetUnitForm()
   } catch (error) {
-    alert('Error saving unit: ' + (error.response?.data?.details || error.message))
+    console.error('Error saving unit:', error)
   }
 }
 
-const confirmDeleteUnit = async (unit) => {
-  if (confirm(`Delete unit "${unit.name}"?`)) {
+const handleDeleteUnit = async (unit) => {
+  const confirmed = await confirmDelete(unit.name, 'unit')
+  if (confirmed) {
     try {
       await unitStore.deleteUnit(unit.id)
     } catch (error) {
-      alert('Error deleting unit: ' + (error.response?.data?.message || error.message))
+      console.error('Error deleting unit:', error)
     }
   }
 }
@@ -358,79 +368,77 @@ const confirmDeleteUnit = async (unit) => {
 const resetUnitForm = () => {
   unitFormData.value = {
     name: '',
-    unit_category: null,
-    conversion_factor: 1.0,
+    short_name: '',
+    category: '',
     is_base_unit: false
   }
 }
 
-// Unit Category Methods
-const showCreateUnitCategoryModal = () => {
-  isEditingUnitCategory.value = false
-  selectedUnitCategory.value = null
-  resetUnitCategoryForm()
-  if (!unitCategoryModalInstance) {
-    unitCategoryModalInstance = new Modal(unitCategoryModalRef.value)
-  }
-  unitCategoryModalInstance.show()
+// Category Methods
+const handleCreateCategory = () => {
+  isEditingCategory.value = false
+  selectedCategory.value = null
+  resetCategoryForm()
+  showCategoryModal()
 }
 
-const editUnitCategory = (category) => {
-  isEditingUnitCategory.value = true
-  selectedUnitCategory.value = category
-  unitCategoryFormData.value = {
-    name: category.name
+const handleEditCategory = (category) => {
+  isEditingCategory.value = true
+  selectedCategory.value = category
+  categoryFormData.value = {
+    name: category.name,
+    description: category.description || ''
   }
-  if (!unitCategoryModalInstance) {
-    unitCategoryModalInstance = new Modal(unitCategoryModalRef.value)
-  }
-  unitCategoryModalInstance.show()
+  showCategoryModal()
 }
 
-const saveUnitCategory = async () => {
+const handleSaveCategory = async () => {
   try {
-    if (isEditingUnitCategory.value) {
-      await unitStore.updateUnitCategory(selectedUnitCategory.value.id, unitCategoryFormData.value)
+    if (isEditingCategory.value) {
+      await unitStore.updateUnitCategory(selectedCategory.value.id, categoryFormData.value)
     } else {
-      await unitStore.createUnitCategory(unitCategoryFormData.value)
+      await unitStore.createUnitCategory(categoryFormData.value)
     }
-    unitCategoryModalInstance.hide()
-    resetUnitCategoryForm()
+    hideCategoryModal()
+    resetCategoryForm()
   } catch (error) {
-    alert('Error saving unit category: ' + (error.response?.data?.message || error.message))
+    console.error('Error saving category:', error)
   }
 }
 
-const confirmDeleteUnitCategory = async (category) => {
-  if (confirm(`Delete unit category "${category.name}"?`)) {
+const handleDeleteCategory = async (category) => {
+  const confirmed = await confirmDelete(category.name, 'unit category')
+  if (confirmed) {
     try {
       await unitStore.deleteUnitCategory(category.id)
     } catch (error) {
-      alert('Error deleting unit category: ' + (error.response?.data?.message || error.message))
+      console.error('Error deleting category:', error)
     }
   }
 }
 
-const resetUnitCategoryForm = () => {
-  unitCategoryFormData.value = {
-    name: ''
+const resetCategoryForm = () => {
+  categoryFormData.value = {
+    name: '',
+    description: ''
   }
-}
-
-const formatDate = (dateString) => {
-  if (!dateString) return '-'
-  return new Date(dateString).toLocaleDateString()
 }
 </script>
 
 <style scoped>
-.unit-category-card {
-  transition: transform 0.2s, box-shadow 0.2s;
+.nav-tabs .nav-link {
+  font-weight: 500;
+  color: #495057 !important;
 }
 
-.unit-category-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+.nav-tabs .nav-link:hover {
+  color: #0d6efd !important;
+}
+
+.nav-tabs .nav-link.active {
+  font-weight: 600;
+  color: #0d6efd !important;
+  background-color: #fff !important;
+  border-color: #dee2e6 #dee2e6 #fff !important;
 }
 </style>
-

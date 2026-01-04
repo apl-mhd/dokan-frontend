@@ -9,14 +9,38 @@ export const useProductStore = defineStore('product', () => {
   const unitCategories = ref([])
   const loading = ref(false)
   const error = ref(null)
+  const pagination = ref({
+    currentPage: 1,
+    pageSize: 10,
+    totalItems: 0,
+    totalPages: 0
+  })
 
   // Fetch all products
-  const fetchProducts = async () => {
+  const fetchProducts = async (params = {}) => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.get('/products/list/')
-      products.value = response.data.data || []
+      const response = await api.get('/products/list/', { params })
+      
+      // Handle paginated response
+      if (response.data.results) {
+        products.value = response.data.results
+        pagination.value = {
+          currentPage: params.page || 1,
+          pageSize: params.page_size || 10,
+          totalItems: response.data.count || 0,
+          totalPages: Math.ceil((response.data.count || 0) / (params.page_size || 10))
+        }
+      } else if (response.data.data) {
+        products.value = response.data.data || []
+        pagination.value.totalItems = products.value.length
+        pagination.value.totalPages = 1
+      } else {
+        products.value = response.data || []
+        pagination.value.totalItems = products.value.length
+        pagination.value.totalPages = 1
+      }
     } catch (err) {
       error.value = err.response?.data?.message || 'Failed to fetch products'
       console.error('Error fetching products:', err)
@@ -120,6 +144,7 @@ export const useProductStore = defineStore('product', () => {
     unitCategories,
     loading,
     error,
+    pagination,
     fetchProducts,
     fetchProduct,
     createProduct,

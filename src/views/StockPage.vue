@@ -1,13 +1,7 @@
 <template>
   <div class="container-fluid">
-    <!-- Header -->
-    <div class="row mb-4">
-      <div class="col">
-        <h2 class="mb-3">
-          <i class="bi bi-boxes me-2"></i>Stock Management
-        </h2>
-      </div>
-    </div>
+    <!-- Page Header -->
+    <PageHeader title="Stock Management" icon="bi-boxes" />
 
     <!-- Tabs -->
     <ul class="nav nav-tabs mb-4" role="tablist">
@@ -41,159 +35,214 @@
     <div class="tab-content">
       <!-- Current Stock Tab -->
       <div class="tab-pane fade show active" id="stock" role="tabpanel">
-        <!-- Loading Spinner -->
-        <div v-if="stockStore.loading" class="text-center py-5">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
-          </div>
-        </div>
+        <!-- Loading State -->
+        <LoadingSpinner v-if="stockStore.loading" />
 
-        <!-- Error Alert -->
-        <div v-if="stockStore.error" class="alert alert-danger" role="alert">
-          <i class="bi bi-exclamation-triangle me-2"></i>{{ stockStore.error }}
-        </div>
+        <!-- Error State -->
+        <ErrorAlert :error="stockStore.error" title="Error" dismissible @dismiss="stockStore.error = null" />
 
         <!-- Stock Table -->
-        <div v-else class="card shadow-sm">
-          <div class="card-body">
-            <div class="table-responsive">
-              <table class="table table-hover">
-                <thead class="table-light">
-                  <tr>
-                    <th>Product</th>
-                    <th>Warehouse</th>
-                    <th>Quantity</th>
-                    <th>Status</th>
-                    <th>Last Updated</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="stock in stockStore.stocks" :key="`${stock.product}-${stock.warehouse}`">
-                    <td><strong>{{ stock.product_name || `Product ${stock.product}` }}</strong></td>
-                    <td>{{ stock.warehouse_name || `Warehouse ${stock.warehouse}` }}</td>
-                    <td>
-                      <span class="badge bg-info fs-6">{{ stock.quantity }}</span>
-                    </td>
-                    <td>
-                      <span v-if="stock.quantity > 10" class="badge bg-success">In Stock</span>
-                      <span v-else-if="stock.quantity > 0" class="badge bg-warning">Low Stock</span>
-                      <span v-else class="badge bg-danger">Out of Stock</span>
-                    </td>
-                    <td>{{ formatDate(stock.updated_at) }}</td>
-                  </tr>
-                  <tr v-if="stockStore.stocks.length === 0 && !stockStore.loading">
-                    <td colspan="5" class="text-center text-muted py-4">
-                      No stock records found.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <DataTable
+          v-if="!stockStore.loading"
+          :columns="stockColumns"
+          :items="stockStore.stocks || []"
+          :pagination="stockPaginationData"
+          empty-message="No stock data found."
+          @page-change="handleStockPageChange"
+        >
+          <template #body="{ items }">
+            <tr v-for="stock in items" :key="stock.id">
+              <td>{{ stock.id }}</td>
+              <td><strong>{{ stock.product_name || `Product ${stock.product}` }}</strong></td>
+              <td>{{ stock.warehouse_name || `Warehouse ${stock.warehouse}` }}</td>
+              <td>
+                <span class="badge" :class="getStockLevelClass(stock.quantity)">
+                  {{ formatNumber(stock.quantity) }}
+                </span>
+              </td>
+              <td>{{ stock.unit_name || 'N/A' }}</td>
+              <td>{{ formatDate(stock.last_updated) }}</td>
+            </tr>
+          </template>
+        </DataTable>
       </div>
 
       <!-- Stock Transactions Tab -->
       <div class="tab-pane fade" id="transactions" role="tabpanel">
-        <!-- Loading Spinner -->
-        <div v-if="stockStore.loading" class="text-center py-5">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
-          </div>
-        </div>
+        <!-- Loading State -->
+        <LoadingSpinner v-if="stockStore.loadingTransactions" />
 
-        <!-- Error Alert -->
-        <div v-if="stockStore.error" class="alert alert-danger" role="alert">
-          <i class="bi bi-exclamation-triangle me-2"></i>{{ stockStore.error }}
-        </div>
+        <!-- Error State -->
+        <ErrorAlert
+          :error="stockStore.transactionsError"
+          title="Error"
+          dismissible
+          @dismiss="stockStore.transactionsError = null"
+        />
 
         <!-- Transactions Table -->
-        <div v-else class="card shadow-sm">
-          <div class="card-body">
-            <div class="table-responsive">
-              <table class="table table-hover">
-                <thead class="table-light">
-                  <tr>
-                    <th>Date</th>
-                    <th>Product</th>
-                    <th>Type</th>
-                    <th>Direction</th>
-                    <th>Quantity</th>
-                    <th>Balance After</th>
-                    <th>Unit</th>
-                    <th>Reference</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="transaction in stockStore.stockTransactions" :key="transaction.id">
-                    <td>{{ formatDateTime(transaction.created_at) }}</td>
-                    <td><strong>{{ transaction.product_name || `Product ${transaction.product}` }}</strong></td>
-                    <td>
-                      <span class="badge bg-secondary">{{ formatTransactionType(transaction.transaction_type) }}</span>
-                    </td>
-                    <td>
-                      <span
-                        class="badge"
-                        :class="transaction.direction === 'in' ? 'bg-success' : 'bg-danger'"
-                      >
-                        <i :class="transaction.direction === 'in' ? 'bi bi-arrow-down' : 'bi bi-arrow-up'"></i>
-                        {{ transaction.direction.toUpperCase() }}
-                      </span>
-                    </td>
-                    <td>{{ transaction.quantity }}</td>
-                    <td><strong>{{ transaction.balance_after }}</strong></td>
-                    <td>{{ transaction.unit_name || `Unit ${transaction.unit}` }}</td>
-                    <td>{{ transaction.reference_id }}</td>
-                  </tr>
-                  <tr v-if="stockStore.stockTransactions.length === 0 && !stockStore.loading">
-                    <td colspan="8" class="text-center text-muted py-4">
-                      No stock transactions found.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <DataTable
+          v-if="!stockStore.loadingTransactions"
+          :columns="transactionColumns"
+          :items="stockStore.transactions || []"
+          :pagination="transactionPaginationData"
+          empty-message="No stock transactions found."
+          @page-change="handleTransactionPageChange"
+        >
+          <template #body="{ items }">
+            <tr v-for="transaction in items" :key="transaction.id">
+              <td>{{ transaction.id }}</td>
+              <td>{{ formatDateTime(transaction.created_at) }}</td>
+              <td><strong>{{ transaction.product_name || `Product ${transaction.product}` }}</strong></td>
+              <td>{{ transaction.warehouse_name || `Warehouse ${transaction.warehouse}` }}</td>
+              <td>
+                <span class="badge" :class="getTransactionTypeClass(transaction.transaction_type)">
+                  {{ transaction.transaction_type }}
+                </span>
+              </td>
+              <td>
+                <span :class="transaction.quantity > 0 ? 'text-success' : 'text-danger'">
+                  {{ transaction.quantity > 0 ? '+' : '' }}{{ formatNumber(transaction.quantity) }}
+                </span>
+              </td>
+              <td>{{ transaction.unit_name || 'N/A' }}</td>
+              <td>{{ transaction.reference || '-' }}</td>
+              <td>{{ truncate(transaction.notes, 50) }}</td>
+            </tr>
+          </template>
+        </DataTable>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useStockStore } from '../stores/stock.store'
+import { useFormatter } from '../composables/useFormatter'
+import { usePagination } from '../composables/usePagination'
 
+// Components
+import PageHeader from '../components/common/PageHeader.vue'
+import LoadingSpinner from '../components/common/LoadingSpinner.vue'
+import ErrorAlert from '../components/common/ErrorAlert.vue'
+import DataTable from '../components/common/DataTable.vue'
+
+// Stores
 const stockStore = useStockStore()
 
-onMounted(() => {
-  stockStore.fetchStocks()
-  stockStore.fetchStockTransactions()
+// Composables
+const { formatDate, formatDateTime, formatNumber, truncate } = useFormatter()
+const stockPagination = usePagination(10)
+const transactionPagination = usePagination(10)
+
+// Table columns definition
+const stockColumns = [
+  { key: 'id', label: 'ID', width: '80px' },
+  { key: 'product', label: 'Product' },
+  { key: 'warehouse', label: 'Warehouse' },
+  { key: 'quantity', label: 'Quantity', width: '120px' },
+  { key: 'unit', label: 'Unit', width: '100px' },
+  { key: 'last_updated', label: 'Last Updated', width: '150px' }
+]
+
+const transactionColumns = [
+  { key: 'id', label: 'ID', width: '80px' },
+  { key: 'created_at', label: 'Date/Time', width: '180px' },
+  { key: 'product', label: 'Product' },
+  { key: 'warehouse', label: 'Warehouse' },
+  { key: 'type', label: 'Type', width: '120px' },
+  { key: 'quantity', label: 'Quantity', width: '100px' },
+  { key: 'unit', label: 'Unit', width: '100px' },
+  { key: 'reference', label: 'Reference', width: '120px' },
+  { key: 'notes', label: 'Notes' }
+]
+
+// Computed pagination data
+const stockPaginationData = computed(() => ({
+  currentPage: stockPagination.currentPage.value,
+  totalPages: stockPagination.totalPages.value,
+  totalItems: stockPagination.totalItems.value,
+  startIndex: stockPagination.startIndex.value,
+  endIndex: stockPagination.endIndex.value,
+  hasNextPage: stockPagination.hasNextPage.value,
+  hasPrevPage: stockPagination.hasPrevPage.value
+}))
+
+const transactionPaginationData = computed(() => ({
+  currentPage: transactionPagination.currentPage.value,
+  totalPages: transactionPagination.totalPages.value,
+  totalItems: transactionPagination.totalItems.value,
+  startIndex: transactionPagination.startIndex.value,
+  endIndex: transactionPagination.endIndex.value,
+  hasNextPage: transactionPagination.hasNextPage.value,
+  hasPrevPage: transactionPagination.hasPrevPage.value
+}))
+
+// Lifecycle
+onMounted(async () => {
+  await Promise.all([
+    fetchStocks(),
+    fetchTransactions()
+  ])
 })
 
-const formatDate = (dateString) => {
-  if (!dateString) return '-'
-  return new Date(dateString).toLocaleDateString()
+// Methods
+const fetchStocks = async () => {
+  await stockStore.fetchStocks(stockPagination.getParams())
+  if (stockStore.pagination) {
+    stockPagination.updateFromResponse(stockStore.pagination)
+  }
 }
 
-const formatDateTime = (dateString) => {
-  if (!dateString) return '-'
-  return new Date(dateString).toLocaleString()
+const fetchTransactions = async () => {
+  await stockStore.fetchStockTransactions(transactionPagination.getParams())
+  if (stockStore.transactionsPagination) {
+    transactionPagination.updateFromResponse(stockStore.transactionsPagination)
+  }
 }
 
-const formatTransactionType = (type) => {
-  if (!type) return '-'
-  return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+const handleStockPageChange = async (page) => {
+  stockPagination.goToPage(page)
+  await fetchStocks()
+}
+
+const handleTransactionPageChange = async (page) => {
+  transactionPagination.goToPage(page)
+  await fetchTransactions()
+}
+
+const getStockLevelClass = (quantity) => {
+  if (quantity === 0) return 'bg-danger'
+  if (quantity < 10) return 'bg-warning text-dark'
+  return 'bg-success'
+}
+
+const getTransactionTypeClass = (type) => {
+  const typeMap = {
+    purchase: 'bg-success',
+    sale: 'bg-primary',
+    adjustment: 'bg-warning text-dark',
+    transfer: 'bg-info'
+  }
+  return typeMap[type?.toLowerCase()] || 'bg-secondary'
 }
 </script>
 
 <style scoped>
 .nav-tabs .nav-link {
-  color: #495057;
+  font-weight: 500;
+  color: #495057 !important;
+}
+
+.nav-tabs .nav-link:hover {
+  color: #0d6efd !important;
 }
 
 .nav-tabs .nav-link.active {
   font-weight: 600;
+  color: #0d6efd !important;
+  background-color: #fff !important;
+  border-color: #dee2e6 #dee2e6 #fff !important;
 }
 </style>
-

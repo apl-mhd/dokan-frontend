@@ -1,83 +1,70 @@
 <template>
   <div class="container-fluid">
-    <div class="row mb-4">
-      <div class="col">
-        <h2 class="mb-3">
-          <i class="bi bi-bag-plus me-2"></i>Purchase Management
-        </h2>
-      </div>
-      <div class="col-auto">
-        <button class="btn btn-primary" @click="showCreateModal">
+    <!-- Page Header -->
+    <PageHeader title="Purchase Management" icon="bi-bag-plus">
+      <template #actions>
+        <button class="btn btn-primary" @click="handleCreate">
           <i class="bi bi-plus-circle me-2"></i>New Purchase
         </button>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
-    <!-- Loading Spinner -->
-    <div v-if="purchaseStore.loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
-      </div>
-    </div>
+    <!-- Loading State -->
+    <LoadingSpinner v-if="purchaseStore.loading" />
 
-    <!-- Error Alert -->
-    <div v-if="purchaseStore.error" class="alert alert-danger" role="alert">
-      <i class="bi bi-exclamation-triangle me-2"></i>{{ purchaseStore.error }}
-    </div>
+    <!-- Error State -->
+    <ErrorAlert :error="purchaseStore.error" title="Error" dismissible @dismiss="purchaseStore.error = null" />
 
-    <!-- Purchases Table -->
-    <div v-else class="card shadow-sm">
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover">
-            <thead class="table-light">
-              <tr>
-                <th>Invoice #</th>
-                <th>Supplier</th>
-                <th>Warehouse</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th>Grand Total</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="purchase in purchaseStore.purchases" :key="purchase.id">
-                <td><strong>{{ purchase.invoice_number || purchase.id }}</strong></td>
-                <td>{{ purchase.supplier_name || `Supplier ${purchase.supplier}` }}</td>
-                <td>{{ purchase.warehouse_name || `Warehouse ${purchase.warehouse}` }}</td>
-                <td>{{ formatDate(purchase.invoice_date) }}</td>
-                <td>
-                  <span class="badge" :class="getStatusClass(purchase.status)">
-                    {{ purchase.status }}
-                  </span>
-                </td>
-                <td><strong>৳{{ purchase.grand_total }}</strong></td>
-                <td>
-                  <button class="btn btn-sm btn-outline-info me-2" @click="viewPurchase(purchase)" title="View">
-                    <i class="bi bi-eye"></i>
-                  </button>
-                  <button class="btn btn-sm btn-outline-primary me-2" @click="editPurchase(purchase)" title="Edit">
-                    <i class="bi bi-pencil"></i>
-                  </button>
-                  <button class="btn btn-sm btn-outline-danger" @click="confirmDelete(purchase)" title="Delete">
-                    <i class="bi bi-trash"></i>
-                  </button>
-                </td>
-              </tr>
-              <tr v-if="purchaseStore.purchases.length === 0 && !purchaseStore.loading">
-                <td colspan="7" class="text-center text-muted py-4">
-                  No purchases found. Click "New Purchase" to create one.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+    <!-- Data Table -->
+    <DataTable
+      v-if="!purchaseStore.loading"
+      :columns="columns"
+      :items="purchaseStore.purchases || []"
+      :pagination="paginationData"
+      empty-message="No purchases found. Click 'New Purchase' to create one."
+      @page-change="handlePageChange"
+    >
+      <template #body="{ items }">
+        <tr v-for="purchase in items" :key="purchase.id">
+          <td><strong>{{ purchase.invoice_number || purchase.id }}</strong></td>
+          <td>{{ purchase.supplier_name || `Supplier ${purchase.supplier}` }}</td>
+          <td>{{ purchase.warehouse_name || `Warehouse ${purchase.warehouse}` }}</td>
+          <td>{{ formatDate(purchase.invoice_date) }}</td>
+          <td>
+            <span class="badge" :class="getStatusClass(purchase.status)">
+              {{ purchase.status }}
+            </span>
+          </td>
+          <td><strong>{{ formatCurrency(purchase.grand_total) }}</strong></td>
+          <td>
+            <button
+              class="btn btn-sm btn-outline-info me-2"
+              @click="handleView(purchase)"
+              title="View"
+            >
+              <i class="bi bi-eye"></i>
+            </button>
+            <button
+              class="btn btn-sm btn-outline-primary me-2"
+              @click="handleEdit(purchase)"
+              title="Edit"
+            >
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button
+              class="btn btn-sm btn-outline-danger"
+              @click="handleDelete(purchase)"
+              title="Delete"
+            >
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>
+        </tr>
+      </template>
+    </DataTable>
 
     <!-- Create/Edit Modal -->
-    <div class="modal fade" id="purchaseModal" tabindex="-1" aria-hidden="true" ref="modalRef">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" ref="modalRef">
       <div class="modal-dialog modal-xl">
         <div class="modal-content">
           <div class="modal-header">
@@ -122,113 +109,29 @@
               </div>
             </div>
 
-            <!-- Add Item Section -->
-            <div class="card mb-3">
-              <div class="card-header bg-light">
-                <strong>Add Items</strong>
-              </div>
-              <div class="card-body">
-                <div class="row align-items-end">
-                  <div class="col-md-3">
-                    <label class="form-label">Product</label>
-                    <select v-model="currentItem.product" class="form-select" @change="loadProductUnits">
-                      <option value="">Select Product</option>
-                      <option v-for="product in productStore.products" :key="product.id" :value="product.id">
-                        {{ product.name }}
-                      </option>
-                    </select>
-                  </div>
-
-                  <div class="col-md-2">
-                    <label class="form-label">Unit</label>
-                    <select v-model="currentItem.unit" class="form-select" @change="updateUnitConversion">
-                      <option value="">Select Unit</option>
-                      <option v-for="unit in availableUnits" :key="unit.id" :value="unit.id">
-                        {{ unit.name }}
-                        {{ unit.is_base_unit ? '(Base)' : '' }}
-                      </option>
-                    </select>
-                  </div>
-
-                  <div class="col-md-2">
-                    <label class="form-label">Quantity</label>
-                    <input v-model.number="currentItem.quantity" type="number" step="0.01" class="form-control" @input="calculateLineTotal" />
-                    <small class="text-muted" v-if="currentItemConversion">
-                      {{ currentItemConversion }}
-                    </small>
-                  </div>
-
-                  <div class="col-md-2">
-                    <label class="form-label">Unit Price</label>
-                    <input v-model.number="currentItem.unit_price" type="number" step="0.01" class="form-control" @input="calculateLineTotal" />
-                  </div>
-
-                  <div class="col-md-2">
-                    <label class="form-label">Line Total</label>
-                    <input v-model="currentItem.line_total" type="number" step="0.01" class="form-control" readonly />
-                  </div>
-
-                  <div class="col-md-1">
-                    <button type="button" class="btn btn-success w-100" @click="addItem">
-                      <i class="bi bi-plus"></i>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Items Table -->
-            <div class="table-responsive mb-3">
-              <table class="table table-bordered">
-                <thead class="table-light">
-                  <tr>
-                    <th>#</th>
-                    <th>Product</th>
-                    <th>Unit</th>
-                    <th>Quantity</th>
-                    <th>Base Unit Qty</th>
-                    <th>Unit Price</th>
-                    <th>Line Total</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(item, index) in formData.items" :key="index">
-                    <td>{{ index + 1 }}</td>
-                    <td>{{ getProductName(item.product) }}</td>
-                    <td>{{ getUnitName(item.unit) }}</td>
-                    <td>{{ item.quantity }}</td>
-                    <td>
-                      <span class="badge bg-info">
-                        {{ getBaseUnitQuantity(item) }}
-                      </span>
-                    </td>
-                    <td>৳{{ item.unit_price }}</td>
-                    <td><strong>৳{{ item.line_total || (item.quantity * item.unit_price) }}</strong></td>
-                    <td>
-                      <button type="button" class="btn btn-sm btn-danger" @click="removeItem(index)">
-                        <i class="bi bi-trash"></i>
-                      </button>
-                    </td>
-                  </tr>
-                  <tr v-if="formData.items.length === 0">
-                    <td colspan="8" class="text-center text-muted">No items added</td>
-                  </tr>
-                </tbody>
-                <tfoot v-if="formData.items.length > 0">
-                  <tr class="table-info">
-                    <td colspan="8" class="text-muted">
-                      <i class="bi bi-info-circle me-2"></i>
-                      <strong>Note:</strong> All stock quantities are stored in base units for accurate inventory tracking.
-                    </td>
-                  </tr>
-                  <tr class="table-success">
-                    <td colspan="6" class="text-end"><strong>Grand Total:</strong></td>
-                    <td colspan="2"><strong>৳{{ calculateGrandTotal() }}</strong></td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+            <!-- Invoice Items -->
+            <InvoiceItemsTable
+              ref="invoiceItemsRef"
+              :items="formData.items"
+              :products="productStore.products"
+              :available-units="availableUnits"
+              :show-base-unit-qty="true"
+              :show-base-unit-note="true"
+              add-item-title="Add Items"
+              @add-item="addItem"
+              @remove-item="removeItem"
+              @product-change="loadProductUnits"
+              @unit-change="updateUnitConversion"
+            >
+              <template #unitConversion>
+                {{ currentItemConversion }}
+              </template>
+              <template #base-unit-qty="{ item }">
+                <span class="badge bg-info">
+                  {{ getBaseUnitQuantity(item) }}
+                </span>
+              </template>
+            </InvoiceItemsTable>
 
             <!-- Notes -->
             <div class="mb-3">
@@ -238,7 +141,12 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" @click="savePurchase" :disabled="formData.items.length === 0">
+            <button
+              type="button"
+              class="btn btn-primary"
+              @click="handleSave"
+              :disabled="formData.items.length === 0"
+            >
               <i class="bi bi-save me-2"></i>{{ isEditing ? 'Update' : 'Save' }} Purchase
             </button>
           </div>
@@ -254,20 +162,37 @@ import { usePurchaseStore } from '../stores/purchase.store'
 import { useSupplierStore } from '../stores/supplier.store'
 import { useWarehouseStore } from '../stores/warehouse.store'
 import { useProductStore } from '../stores/product.store'
-import { Modal } from 'bootstrap'
+import { useModal } from '../composables/useModal'
+import { useFormatter } from '../composables/useFormatter'
+import { useConfirm } from '../composables/useConfirm'
+import { usePagination } from '../composables/usePagination'
 import { convertToBaseUnit, formatUnitConversion } from '../utility/unitConverter'
 
+// Components
+import PageHeader from '../components/common/PageHeader.vue'
+import LoadingSpinner from '../components/common/LoadingSpinner.vue'
+import ErrorAlert from '../components/common/ErrorAlert.vue'
+import DataTable from '../components/common/DataTable.vue'
+import InvoiceItemsTable from '../components/common/InvoiceItemsTable.vue'
+
+// Stores
 const purchaseStore = usePurchaseStore()
 const supplierStore = useSupplierStore()
 const warehouseStore = useWarehouseStore()
 const productStore = useProductStore()
 
-const modalRef = ref(null)
-let modalInstance = null
+// Composables
+const { modalRef, show: showModal, hide: hideModal } = useModal()
+const { formatDate, formatCurrency, getStatusClass } = useFormatter()
+const { confirmDelete } = useConfirm()
+const pagination = usePagination(10)
+
+// State
 const isEditing = ref(false)
 const selectedPurchase = ref(null)
 const availableUnits = ref([])
 const currentItemConversion = ref('')
+const invoiceItemsRef = ref(null)
 
 const formData = ref({
   supplier: '',
@@ -278,32 +203,59 @@ const formData = ref({
   items: []
 })
 
-const currentItem = ref({
-  product: '',
-  unit: '',
-  quantity: 0,
-  unit_price: 0,
-  line_total: 0
+// Table columns definition
+const columns = [
+  { key: 'invoice_number', label: 'Invoice #', width: '120px' },
+  { key: 'supplier', label: 'Supplier' },
+  { key: 'warehouse', label: 'Warehouse' },
+  { key: 'invoice_date', label: 'Date', width: '120px' },
+  { key: 'status', label: 'Status', width: '100px' },
+  { key: 'grand_total', label: 'Grand Total', width: '120px' },
+  { key: 'actions', label: 'Actions', width: '180px' }
+]
+
+// Computed pagination data for DataTable
+const paginationData = computed(() => ({
+  currentPage: pagination.currentPage.value,
+  totalPages: pagination.totalPages.value,
+  totalItems: pagination.totalItems.value,
+  startIndex: pagination.startIndex.value,
+  endIndex: pagination.endIndex.value,
+  hasNextPage: pagination.hasNextPage.value,
+  hasPrevPage: pagination.hasPrevPage.value
+}))
+
+// Lifecycle
+onMounted(async () => {
+  await Promise.all([
+    fetchPurchases(),
+    supplierStore.fetchSuppliers(),
+    warehouseStore.fetchWarehouses(),
+    productStore.fetchProducts()
+  ])
 })
 
-onMounted(() => {
-  purchaseStore.fetchPurchases()
-  supplierStore.fetchSuppliers()
-  warehouseStore.fetchWarehouses()
-  productStore.fetchProducts()
-})
+// Methods
+const fetchPurchases = async () => {
+  await purchaseStore.fetchPurchases(pagination.getParams())
+  if (purchaseStore.pagination) {
+    pagination.updateFromResponse(purchaseStore.pagination)
+  }
+}
 
-const showCreateModal = () => {
+const handlePageChange = async (page) => {
+  pagination.goToPage(page)
+  await fetchPurchases()
+}
+
+const handleCreate = () => {
   isEditing.value = false
   selectedPurchase.value = null
   resetForm()
-  if (!modalInstance) {
-    modalInstance = new Modal(modalRef.value)
-  }
-  modalInstance.show()
+  showModal()
 }
 
-const editPurchase = async (purchase) => {
+const handleEdit = async (purchase) => {
   isEditing.value = true
   selectedPurchase.value = purchase
   
@@ -319,87 +271,14 @@ const editPurchase = async (purchase) => {
     items: fullPurchase.items || []
   }
   
-  if (!modalInstance) {
-    modalInstance = new Modal(modalRef.value)
-  }
-  modalInstance.show()
+  showModal()
 }
 
-const viewPurchase = async (purchase) => {
-  // Similar to edit but in read-only mode
-  await editPurchase(purchase)
+const handleView = async (purchase) => {
+  await handleEdit(purchase)
 }
 
-const loadProductUnits = async () => {
-  if (currentItem.value.product) {
-    availableUnits.value = await productStore.fetchProductUnits(currentItem.value.product)
-    updateUnitConversion()
-  }
-}
-
-const updateUnitConversion = () => {
-  if (currentItem.value.unit && currentItem.value.quantity > 0) {
-    const selectedUnit = availableUnits.value.find(u => u.id === currentItem.value.unit)
-    if (selectedUnit) {
-      const product = productStore.products.find(p => p.id === currentItem.value.product)
-      const baseUnitName = product?.base_unit_name || 'base unit'
-      currentItemConversion.value = formatUnitConversion(
-        currentItem.value.quantity,
-        selectedUnit,
-        baseUnitName
-      )
-    }
-  } else {
-    currentItemConversion.value = ''
-  }
-}
-
-const calculateLineTotal = () => {
-  currentItem.value.line_total = (currentItem.value.quantity * currentItem.value.unit_price).toFixed(2)
-  updateUnitConversion()
-}
-
-const getBaseUnitQuantity = (item) => {
-  const unit = availableUnits.value.find(u => u.id === item.unit)
-  const product = productStore.products.find(p => p.id === item.product)
-  const baseUnitName = product?.base_unit_name || 'base unit'
-  
-  if (!unit) {
-    return `${item.quantity} ${baseUnitName}`
-  }
-  
-  const baseQty = convertToBaseUnit(item.quantity, unit)
-  return `${baseQty} ${baseUnitName}`
-}
-
-const addItem = () => {
-  if (!currentItem.value.product || !currentItem.value.unit || currentItem.value.quantity <= 0 || currentItem.value.unit_price < 0) {
-    alert('Please fill all item fields correctly')
-    return
-  }
-
-  formData.value.items.push({ ...currentItem.value })
-  
-  // Reset current item
-  currentItem.value = {
-    product: '',
-    unit: '',
-    quantity: 0,
-    unit_price: 0,
-    line_total: 0
-  }
-  availableUnits.value = []
-}
-
-const removeItem = (index) => {
-  formData.value.items.splice(index, 1)
-}
-
-const calculateGrandTotal = () => {
-  return formData.value.items.reduce((sum, item) => sum + parseFloat(item.line_total || (item.quantity * item.unit_price)), 0).toFixed(2)
-}
-
-const savePurchase = async () => {
+const handleSave = async () => {
   if (!formData.value.supplier || !formData.value.warehouse) {
     alert('Please select supplier and warehouse')
     return
@@ -416,21 +295,74 @@ const savePurchase = async () => {
     } else {
       await purchaseStore.createPurchase(formData.value)
     }
-    modalInstance.hide()
+    hideModal()
     resetForm()
+    await fetchPurchases()
   } catch (error) {
-    alert('Error saving purchase: ' + (error.response?.data?.message || error.message))
+    console.error('Error saving purchase:', error)
+    // Error is handled by store and displayed in ErrorAlert
   }
 }
 
-const confirmDelete = async (purchase) => {
-  if (confirm(`Are you sure you want to delete purchase ${purchase.invoice_number || purchase.id}?`)) {
+const handleDelete = async (purchase) => {
+  const confirmed = await confirmDelete(purchase.invoice_number || `#${purchase.id}`, 'purchase')
+  if (confirmed) {
     try {
       await purchaseStore.deletePurchase(purchase.id)
+      await fetchPurchases()
     } catch (error) {
-      alert('Error deleting purchase: ' + (error.response?.data?.message || error.message))
+      console.error('Error deleting purchase:', error)
+      // Error is handled by store and displayed in ErrorAlert
     }
   }
+}
+
+const loadProductUnits = async (productId) => {
+  if (productId) {
+    availableUnits.value = await productStore.fetchProductUnits(productId)
+    updateUnitConversion()
+  }
+}
+
+const updateUnitConversion = () => {
+  const currentItem = invoiceItemsRef.value?.currentItem
+  if (currentItem?.unit && currentItem?.quantity > 0) {
+    const selectedUnit = availableUnits.value.find(u => u.id === currentItem.unit)
+    if (selectedUnit) {
+      const product = productStore.products.find(p => p.id === currentItem.product)
+      const baseUnitName = product?.base_unit_name || 'base unit'
+      currentItemConversion.value = formatUnitConversion(
+        currentItem.quantity,
+        selectedUnit,
+        baseUnitName
+      )
+    }
+  } else {
+    currentItemConversion.value = ''
+  }
+}
+
+const getBaseUnitQuantity = (item) => {
+  const unit = availableUnits.value.find(u => u.id === item.unit)
+  const product = productStore.products.find(p => p.id === item.product)
+  const baseUnitName = product?.base_unit_name || 'base unit'
+  
+  if (!unit) {
+    return `${item.quantity} ${baseUnitName}`
+  }
+  
+  const baseQty = convertToBaseUnit(item.quantity, unit)
+  return `${baseQty} ${baseUnitName}`
+}
+
+const addItem = (item) => {
+  formData.value.items.push({ ...item })
+  availableUnits.value = []
+  currentItemConversion.value = ''
+}
+
+const removeItem = (index) => {
+  formData.value.items.splice(index, 1)
 }
 
 const resetForm = () => {
@@ -442,44 +374,10 @@ const resetForm = () => {
     notes: '',
     items: []
   }
-  currentItem.value = {
-    product: '',
-    unit: '',
-    quantity: 0,
-    unit_price: 0,
-    line_total: 0
-  }
   availableUnits.value = []
-}
-
-const formatDate = (dateString) => {
-  if (!dateString) return '-'
-  return new Date(dateString).toLocaleDateString()
-}
-
-const getStatusClass = (status) => {
-  const statusClasses = {
-    pending: 'bg-warning',
-    completed: 'bg-success',
-    cancelled: 'bg-danger'
+  currentItemConversion.value = ''
+  if (invoiceItemsRef.value) {
+    invoiceItemsRef.value.resetCurrentItem()
   }
-  return statusClasses[status] || 'bg-secondary'
-}
-
-const getProductName = (productId) => {
-  const product = productStore.products.find(p => p.id === productId)
-  return product ? product.name : `Product ${productId}`
-}
-
-const getUnitName = (unitId) => {
-  // You might need to fetch units or cache them
-  return `Unit ${unitId}`
 }
 </script>
-
-<style scoped>
-.table th {
-  font-weight: 600;
-  color: #495057;
-}
-</style>

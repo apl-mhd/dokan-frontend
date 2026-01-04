@@ -1,80 +1,63 @@
 <template>
   <div class="container-fluid">
-    <div class="row mb-4">
-      <div class="col">
-        <h2 class="mb-3">
-          <i class="bi bi-person-circle me-2"></i>Customer Management
-        </h2>
-      </div>
-      <div class="col-auto">
-        <button class="btn btn-primary" @click="showCreateModal">
+    <!-- Page Header -->
+    <PageHeader title="Customer Management" icon="bi-person-circle">
+      <template #actions>
+        <button class="btn btn-primary" @click="handleCreate">
           <i class="bi bi-plus-circle me-2"></i>Add Customer
         </button>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
-    <!-- Loading Spinner -->
-    <div v-if="customerStore.loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
-      </div>
-    </div>
+    <!-- Loading State -->
+    <LoadingSpinner v-if="customerStore.loading" />
 
-    <!-- Error Alert -->
-    <div v-if="customerStore.error" class="alert alert-danger" role="alert">
-      <i class="bi bi-exclamation-triangle me-2"></i>{{ customerStore.error }}
-    </div>
+    <!-- Error State -->
+    <ErrorAlert :error="customerStore.error" title="Error" dismissible @dismiss="customerStore.error = null" />
 
-    <!-- Customers Table -->
-    <div v-else class="card shadow-sm">
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover">
-            <thead class="table-light">
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Address</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="customer in customerStore.customers" :key="customer.id">
-                <td>{{ customer.id }}</td>
-                <td><strong>{{ customer.name }}</strong></td>
-                <td>{{ customer.email || '-' }}</td>
-                <td>{{ customer.phone || '-' }}</td>
-                <td>{{ customer.address || '-' }}</td>
-                <td>
-                  <span class="badge" :class="customer.is_active ? 'bg-success' : 'bg-secondary'">
-                    {{ customer.is_active ? 'Active' : 'Inactive' }}
-                  </span>
-                </td>
-                <td>
-                  <button class="btn btn-sm btn-outline-primary me-2" @click="editCustomer(customer)" title="Edit">
-                    <i class="bi bi-pencil"></i>
-                  </button>
-                  <button class="btn btn-sm btn-outline-danger" @click="confirmDelete(customer)" title="Delete">
-                    <i class="bi bi-trash"></i>
-                  </button>
-                </td>
-              </tr>
-              <tr v-if="customerStore.customers.length === 0 && !customerStore.loading">
-                <td colspan="7" class="text-center text-muted py-4">
-                  No customers found. Click "Add Customer" to create one.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+    <!-- Data Table -->
+    <DataTable
+      v-if="!customerStore.loading"
+      :columns="columns"
+      :items="customerStore.customers || []"
+      :pagination="paginationData"
+      empty-message="No customers found. Click 'Add Customer' to create one."
+      @page-change="handlePageChange"
+    >
+      <template #body="{ items }">
+        <tr v-for="customer in items" :key="customer.id">
+          <td>{{ customer.id }}</td>
+          <td><strong>{{ customer.name }}</strong></td>
+          <td>{{ customer.email || '-' }}</td>
+          <td>{{ customer.phone || '-' }}</td>
+          <td>{{ truncate(customer.address, 40) }}</td>
+          <td>
+            <span class="badge" :class="customer.is_active ? 'bg-success' : 'bg-secondary'">
+              {{ customer.is_active ? 'Active' : 'Inactive' }}
+            </span>
+          </td>
+          <td>
+            <button
+              class="btn btn-sm btn-outline-primary me-2"
+              @click="handleEdit(customer)"
+              title="Edit"
+            >
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button
+              class="btn btn-sm btn-outline-danger"
+              @click="handleDelete(customer)"
+              title="Delete"
+            >
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>
+        </tr>
+      </template>
+    </DataTable>
 
     <!-- Create/Edit Modal -->
-    <div class="modal fade" id="customerModal" tabindex="-1" aria-hidden="true" ref="modalRef">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" ref="modalRef">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header">
@@ -82,7 +65,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <form @submit.prevent="saveCustomer">
+            <form @submit.prevent="handleSave">
               <div class="row">
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Customer Name <span class="text-danger">*</span></label>
@@ -139,7 +122,7 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" @click="saveCustomer">
+            <button type="button" class="btn btn-primary" @click="handleSave">
               <i class="bi bi-save me-2"></i>{{ isEditing ? 'Update' : 'Save' }}
             </button>
           </div>
@@ -150,13 +133,29 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useCustomerStore } from '../stores/customer.store'
-import { Modal } from 'bootstrap'
+import { useModal } from '../composables/useModal'
+import { useFormatter } from '../composables/useFormatter'
+import { useConfirm } from '../composables/useConfirm'
+import { usePagination } from '../composables/usePagination'
 
+// Components
+import PageHeader from '../components/common/PageHeader.vue'
+import LoadingSpinner from '../components/common/LoadingSpinner.vue'
+import ErrorAlert from '../components/common/ErrorAlert.vue'
+import DataTable from '../components/common/DataTable.vue'
+
+// Stores
 const customerStore = useCustomerStore()
-const modalRef = ref(null)
-let modalInstance = null
+
+// Composables
+const { modalRef, show: showModal, hide: hideModal } = useModal()
+const { truncate } = useFormatter()
+const { confirmDelete } = useConfirm()
+const pagination = usePagination(10)
+
+// State
 const isEditing = ref(false)
 const selectedCustomer = ref(null)
 
@@ -168,21 +167,54 @@ const formData = ref({
   is_active: true
 })
 
-onMounted(() => {
-  customerStore.fetchCustomers()
+// Table columns definition
+const columns = [
+  { key: 'id', label: 'ID', width: '80px' },
+  { key: 'name', label: 'Name' },
+  { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Phone' },
+  { key: 'address', label: 'Address' },
+  { key: 'status', label: 'Status', width: '100px' },
+  { key: 'actions', label: 'Actions', width: '150px' }
+]
+
+// Computed pagination data for DataTable
+const paginationData = computed(() => ({
+  currentPage: pagination.currentPage.value,
+  totalPages: pagination.totalPages.value,
+  totalItems: pagination.totalItems.value,
+  startIndex: pagination.startIndex.value,
+  endIndex: pagination.endIndex.value,
+  hasNextPage: pagination.hasNextPage.value,
+  hasPrevPage: pagination.hasPrevPage.value
+}))
+
+// Lifecycle
+onMounted(async () => {
+  await fetchCustomers()
 })
 
-const showCreateModal = () => {
+// Methods
+const fetchCustomers = async () => {
+  await customerStore.fetchCustomers(pagination.getParams())
+  if (customerStore.pagination) {
+    pagination.updateFromResponse(customerStore.pagination)
+  }
+}
+
+const handlePageChange = async (page) => {
+  pagination.goToPage(page)
+  await fetchCustomers()
+}
+
+const handleCreate = () => {
   isEditing.value = false
   selectedCustomer.value = null
   resetForm()
-  if (!modalInstance) {
-    modalInstance = new Modal(modalRef.value)
-  }
-  modalInstance.show()
+  showModal()
 }
 
-const editCustomer = (customer) => {
+const handleEdit = (customer) => {
   isEditing.value = true
   selectedCustomer.value = customer
   formData.value = {
@@ -192,32 +224,34 @@ const editCustomer = (customer) => {
     address: customer.address || '',
     is_active: customer.is_active
   }
-  if (!modalInstance) {
-    modalInstance = new Modal(modalRef.value)
-  }
-  modalInstance.show()
+  showModal()
 }
 
-const saveCustomer = async () => {
+const handleSave = async () => {
   try {
     if (isEditing.value) {
       await customerStore.updateCustomer(selectedCustomer.value.id, formData.value)
     } else {
       await customerStore.createCustomer(formData.value)
     }
-    modalInstance.hide()
+    hideModal()
     resetForm()
+    await fetchCustomers()
   } catch (error) {
-    alert('Error saving customer: ' + (error.response?.data?.message || error.message))
+    console.error('Error saving customer:', error)
+    // Error is handled by store and displayed in ErrorAlert
   }
 }
 
-const confirmDelete = async (customer) => {
-  if (confirm(`Are you sure you want to delete "${customer.name}"?`)) {
+const handleDelete = async (customer) => {
+  const confirmed = await confirmDelete(customer.name, 'customer')
+  if (confirmed) {
     try {
       await customerStore.deleteCustomer(customer.id)
+      await fetchCustomers()
     } catch (error) {
-      alert('Error deleting customer: ' + (error.response?.data?.message || error.message))
+      console.error('Error deleting customer:', error)
+      // Error is handled by store and displayed in ErrorAlert
     }
   }
 }
@@ -232,4 +266,3 @@ const resetForm = () => {
   }
 }
 </script>
-

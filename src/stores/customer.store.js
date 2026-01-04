@@ -6,14 +6,40 @@ export const useCustomerStore = defineStore('customer', () => {
   const customers = ref([])
   const loading = ref(false)
   const error = ref(null)
+  const pagination = ref({
+    currentPage: 1,
+    pageSize: 10,
+    totalItems: 0,
+    totalPages: 0
+  })
 
   // Fetch all customers
-  const fetchCustomers = async () => {
+  const fetchCustomers = async (params = {}) => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.get('/customers/')
-      customers.value = response.data || []
+      const response = await api.get('/customers/', { params })
+      
+      // Handle paginated response
+      if (response.data.results) {
+        customers.value = response.data.results
+        pagination.value = {
+          currentPage: params.page || 1,
+          pageSize: params.page_size || 10,
+          totalItems: response.data.count || 0,
+          totalPages: Math.ceil((response.data.count || 0) / (params.page_size || 10))
+        }
+      } else if (response.data.data) {
+        // Handle wrapped response
+        customers.value = response.data.data || []
+        pagination.value.totalItems = customers.value.length
+        pagination.value.totalPages = 1
+      } else {
+        // Handle direct array response
+        customers.value = response.data || []
+        pagination.value.totalItems = customers.value.length
+        pagination.value.totalPages = 1
+      }
     } catch (err) {
       error.value = err.response?.data?.message || 'Failed to fetch customers'
       console.error('Error fetching customers:', err)
@@ -92,6 +118,7 @@ export const useCustomerStore = defineStore('customer', () => {
     customers,
     loading,
     error,
+    pagination,
     fetchCustomers,
     fetchCustomer,
     createCustomer,

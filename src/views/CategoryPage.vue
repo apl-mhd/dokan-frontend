@@ -1,33 +1,22 @@
 <template>
   <div class="container-fluid">
-    <div class="row mb-4">
-      <div class="col">
-        <h2 class="mb-3">
-          <i class="bi bi-tags me-2"></i>Product Categories
-        </h2>
-      </div>
-      <div class="col-auto">
-        <button class="btn btn-primary" @click="showCreateModal">
+    <!-- Page Header -->
+    <PageHeader title="Product Categories" icon="bi-tags">
+      <template #actions>
+        <button class="btn btn-primary" @click="handleCreate">
           <i class="bi bi-plus-circle me-2"></i>Add Category
         </button>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
-    <!-- Loading Spinner -->
-    <div v-if="categoryStore.loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
-      </div>
-    </div>
+    <!-- Loading State -->
+    <LoadingSpinner v-if="categoryStore.loading" />
 
-    <!-- Error Alert -->
-    <div v-if="categoryStore.error" class="alert alert-danger alert-dismissible" role="alert">
-      <i class="bi bi-exclamation-triangle me-2"></i>{{ categoryStore.error }}
-      <button type="button" class="btn-close" @click="categoryStore.error = null"></button>
-    </div>
+    <!-- Error State -->
+    <ErrorAlert :error="categoryStore.error" title="Error" dismissible @dismiss="categoryStore.error = null" />
 
     <!-- Categories Grid -->
-    <div v-else class="row g-4">
+    <div v-if="!categoryStore.loading && categoryStore.categories.length > 0" class="row g-4">
       <div v-for="category in categoryStore.categories" :key="category.id" class="col-md-4 col-lg-3">
         <div class="card h-100 shadow-sm category-card">
           <div class="card-body">
@@ -41,58 +30,52 @@
                 </button>
                 <ul class="dropdown-menu">
                   <li>
-                    <a class="dropdown-item" href="#" @click.prevent="editCategory(category)">
+                    <a class="dropdown-item" href="#" @click.prevent="handleEdit(category)">
                       <i class="bi bi-pencil me-2"></i>Edit
                     </a>
                   </li>
                   <li><hr class="dropdown-divider"></li>
                   <li>
-                    <a class="dropdown-item text-danger" href="#" @click.prevent="confirmDelete(category)">
+                    <a class="dropdown-item text-danger" href="#" @click.prevent="handleDelete(category)">
                       <i class="bi bi-trash me-2"></i>Delete
                     </a>
                   </li>
                 </ul>
               </div>
             </div>
-            
-            <p class="card-text text-muted small" v-if="category.description">
-              {{ category.description }}
+            <p class="card-text text-muted small">
+              {{ truncate(category.description, 80) || 'No description' }}
             </p>
-            <p class="card-text text-muted small" v-else>
-              <em>No description</em>
-            </p>
-            
-            <div class="mt-3 pt-3 border-top">
-              <small class="text-muted">
-                <i class="bi bi-calendar me-1"></i>
-                Created: {{ formatDate(category.created_at) }}
-              </small>
+            <div class="mt-3">
+              <span class="badge bg-light text-dark border">
+                <i class="bi bi-box me-1"></i>ID: {{ category.id }}
+              </span>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- Empty State -->
-      <div v-if="categoryStore.categories.length === 0 && !categoryStore.loading" class="col-12">
-        <div class="text-center py-5">
-          <i class="bi bi-tags display-1 text-muted"></i>
-          <p class="mt-3 text-muted">No categories found. Click "Add Category" to create one.</p>
-        </div>
-      </div>
     </div>
 
+    <!-- Empty State -->
+    <EmptyState
+      v-if="!categoryStore.loading && categoryStore.categories.length === 0"
+      icon="bi-tags"
+      title="No Categories Found"
+      message="Start by creating your first product category."
+      action-text="Add Category"
+      @action="handleCreate"
+    />
+
     <!-- Create/Edit Modal -->
-    <div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true" ref="modalRef">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" ref="modalRef">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">
-              <i class="bi bi-tag me-2"></i>{{ isEditing ? 'Edit Category' : 'Add New Category' }}
-            </h5>
+            <h5 class="modal-title">{{ isEditing ? 'Edit Category' : 'Add New Category' }}</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <form @submit.prevent="saveCategory">
+            <form @submit.prevent="handleSave">
               <div class="mb-3">
                 <label class="form-label">Category Name <span class="text-danger">*</span></label>
                 <input
@@ -101,7 +84,7 @@
                   class="form-control"
                   placeholder="Enter category name"
                   required
-                  maxlength="128"
+                  maxlength="255"
                 />
               </div>
 
@@ -111,14 +94,14 @@
                   v-model="formData.description"
                   class="form-control"
                   rows="3"
-                  placeholder="Enter category description (optional)"
+                  placeholder="Enter category description"
                 ></textarea>
               </div>
             </form>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" @click="saveCategory">
+            <button type="button" class="btn btn-primary" @click="handleSave">
               <i class="bi bi-save me-2"></i>{{ isEditing ? 'Update' : 'Save' }}
             </button>
           </div>
@@ -131,11 +114,25 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useCategoryStore } from '../stores/category.store'
-import { Modal } from 'bootstrap'
+import { useModal } from '../composables/useModal'
+import { useFormatter } from '../composables/useFormatter'
+import { useConfirm } from '../composables/useConfirm'
 
+// Components
+import PageHeader from '../components/common/PageHeader.vue'
+import LoadingSpinner from '../components/common/LoadingSpinner.vue'
+import ErrorAlert from '../components/common/ErrorAlert.vue'
+import EmptyState from '../components/common/EmptyState.vue'
+
+// Stores
 const categoryStore = useCategoryStore()
-const modalRef = ref(null)
-let modalInstance = null
+
+// Composables
+const { modalRef, show: showModal, hide: hideModal } = useModal()
+const { truncate } = useFormatter()
+const { confirmDelete } = useConfirm()
+
+// State
 const isEditing = ref(false)
 const selectedCategory = ref(null)
 
@@ -144,53 +141,52 @@ const formData = ref({
   description: ''
 })
 
-onMounted(() => {
-  categoryStore.fetchCategories()
+// Lifecycle
+onMounted(async () => {
+  await categoryStore.fetchCategories()
 })
 
-const showCreateModal = () => {
+// Methods
+const handleCreate = () => {
   isEditing.value = false
   selectedCategory.value = null
   resetForm()
-  if (!modalInstance) {
-    modalInstance = new Modal(modalRef.value)
-  }
-  modalInstance.show()
+  showModal()
 }
 
-const editCategory = (category) => {
+const handleEdit = (category) => {
   isEditing.value = true
   selectedCategory.value = category
   formData.value = {
     name: category.name,
     description: category.description || ''
   }
-  if (!modalInstance) {
-    modalInstance = new Modal(modalRef.value)
-  }
-  modalInstance.show()
+  showModal()
 }
 
-const saveCategory = async () => {
+const handleSave = async () => {
   try {
     if (isEditing.value) {
       await categoryStore.updateCategory(selectedCategory.value.id, formData.value)
     } else {
       await categoryStore.createCategory(formData.value)
     }
-    modalInstance.hide()
+    hideModal()
     resetForm()
   } catch (error) {
-    alert('Error saving category: ' + (error.response?.data?.message || error.message))
+    console.error('Error saving category:', error)
+    // Error is handled by store and displayed in ErrorAlert
   }
 }
 
-const confirmDelete = async (category) => {
-  if (confirm(`Are you sure you want to delete "${category.name}"? This action cannot be undone.`)) {
+const handleDelete = async (category) => {
+  const confirmed = await confirmDelete(category.name, 'category')
+  if (confirmed) {
     try {
       await categoryStore.deleteCategory(category.id)
     } catch (error) {
-      alert('Error deleting category: ' + (error.response?.data?.message || error.message))
+      console.error('Error deleting category:', error)
+      // Error is handled by store and displayed in ErrorAlert
     }
   }
 }
@@ -201,25 +197,21 @@ const resetForm = () => {
     description: ''
   }
 }
-
-const formatDate = (dateString) => {
-  if (!dateString) return '-'
-  return new Date(dateString).toLocaleDateString()
-}
 </script>
 
 <style scoped>
 .category-card {
   transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
 }
 
 .category-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-4px);
   box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
 }
 
-.dropdown-toggle::after {
-  display: none;
+.card-title {
+  font-size: 1.1rem;
+  color: #2c3e50;
 }
 </style>
-
