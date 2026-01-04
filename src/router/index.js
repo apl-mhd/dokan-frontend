@@ -5,6 +5,9 @@ import PurchasePage from '../views/PurchasePage.vue'
 import SalePage from '../views/SalePage.vue'
 import PaymentPage from '../views/PaymentPage.vue'
 import ProductPage from '../views/ProductPage.vue'
+import ProductManagementPage from '../views/ProductManagementPage.vue'
+import CategoryPage from '../views/CategoryPage.vue'
+import UnitPage from '../views/UnitPage.vue'
 import StockPage from '../views/StockPage.vue'
 import SupplierPage from '../views/SupplierPage.vue'
 import CustomerPage from '../views/CustomerPage.vue'
@@ -30,6 +33,21 @@ const routes = [
     path: '/product',
     name: 'Product',
     component: ProductPage,
+  },
+  {
+    path: '/products',
+    name: 'ProductManagement',
+    component: ProductManagementPage,
+  },
+  {
+    path: '/categories',
+    name: 'Categories',
+    component: CategoryPage,
+  },
+  {
+    path: '/units',
+    name: 'Units',
+    component: UnitPage,
   },
   {
     path: '/stock',

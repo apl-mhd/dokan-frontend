@@ -96,7 +96,7 @@
                   </option>
                 </select>
               </div>
-              
+
               <div class="col-md-3">
                 <label class="form-label">Warehouse <span class="text-danger">*</span></label>
                 <select v-model="formData.warehouse" class="form-select" required>
@@ -141,10 +141,11 @@
 
                   <div class="col-md-2">
                     <label class="form-label">Unit</label>
-                    <select v-model="currentItem.unit" class="form-select">
+                    <select v-model="currentItem.unit" class="form-select" @change="updateUnitConversion">
                       <option value="">Select Unit</option>
                       <option v-for="unit in availableUnits" :key="unit.id" :value="unit.id">
                         {{ unit.name }}
+                        {{ unit.is_base_unit ? '(Base)' : '' }}
                       </option>
                     </select>
                   </div>
@@ -152,6 +153,9 @@
                   <div class="col-md-2">
                     <label class="form-label">Quantity</label>
                     <input v-model.number="currentItem.quantity" type="number" step="0.01" class="form-control" @input="calculateLineTotal" />
+                    <small class="text-muted" v-if="currentItemConversion">
+                      {{ currentItemConversion }}
+                    </small>
                   </div>
 
                   <div class="col-md-2">
@@ -182,6 +186,7 @@
                     <th>Product</th>
                     <th>Unit</th>
                     <th>Quantity</th>
+                    <th>Base Unit Qty</th>
                     <th>Unit Price</th>
                     <th>Line Total</th>
                     <th>Action</th>
@@ -193,6 +198,11 @@
                     <td>{{ getProductName(item.product) }}</td>
                     <td>{{ getUnitName(item.unit) }}</td>
                     <td>{{ item.quantity }}</td>
+                    <td>
+                      <span class="badge bg-info">
+                        {{ getBaseUnitQuantity(item) }}
+                      </span>
+                    </td>
                     <td>৳{{ item.unit_price }}</td>
                     <td><strong>৳{{ item.line_total || (item.quantity * item.unit_price) }}</strong></td>
                     <td>
@@ -202,12 +212,18 @@
                     </td>
                   </tr>
                   <tr v-if="formData.items.length === 0">
-                    <td colspan="7" class="text-center text-muted">No items added</td>
+                    <td colspan="8" class="text-center text-muted">No items added</td>
                   </tr>
                 </tbody>
                 <tfoot v-if="formData.items.length > 0">
+                  <tr class="table-info">
+                    <td colspan="8" class="text-muted">
+                      <i class="bi bi-info-circle me-2"></i>
+                      <strong>Note:</strong> All stock quantities are stored in base units for accurate inventory tracking.
+                    </td>
+                  </tr>
                   <tr class="table-success">
-                    <td colspan="5" class="text-end"><strong>Grand Total:</strong></td>
+                    <td colspan="6" class="text-end"><strong>Grand Total:</strong></td>
                     <td colspan="2"><strong>৳{{ calculateGrandTotal() }}</strong></td>
                   </tr>
                 </tfoot>
@@ -233,12 +249,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { usePurchaseStore } from '../stores/purchase.store'
 import { useSupplierStore } from '../stores/supplier.store'
 import { useWarehouseStore } from '../stores/warehouse.store'
 import { useProductStore } from '../stores/product.store'
 import { Modal } from 'bootstrap'
+import { convertToBaseUnit, formatUnitConversion } from '../utility/unitConverter'
 
 const purchaseStore = usePurchaseStore()
 const supplierStore = useSupplierStore()
@@ -250,6 +267,7 @@ let modalInstance = null
 const isEditing = ref(false)
 const selectedPurchase = ref(null)
 const availableUnits = ref([])
+const currentItemConversion = ref('')
 
 const formData = ref({
   supplier: '',
@@ -315,11 +333,43 @@ const viewPurchase = async (purchase) => {
 const loadProductUnits = async () => {
   if (currentItem.value.product) {
     availableUnits.value = await productStore.fetchProductUnits(currentItem.value.product)
+    updateUnitConversion()
+  }
+}
+
+const updateUnitConversion = () => {
+  if (currentItem.value.unit && currentItem.value.quantity > 0) {
+    const selectedUnit = availableUnits.value.find(u => u.id === currentItem.value.unit)
+    if (selectedUnit) {
+      const product = productStore.products.find(p => p.id === currentItem.value.product)
+      const baseUnitName = product?.base_unit_name || 'base unit'
+      currentItemConversion.value = formatUnitConversion(
+        currentItem.value.quantity,
+        selectedUnit,
+        baseUnitName
+      )
+    }
+  } else {
+    currentItemConversion.value = ''
   }
 }
 
 const calculateLineTotal = () => {
   currentItem.value.line_total = (currentItem.value.quantity * currentItem.value.unit_price).toFixed(2)
+  updateUnitConversion()
+}
+
+const getBaseUnitQuantity = (item) => {
+  const unit = availableUnits.value.find(u => u.id === item.unit)
+  const product = productStore.products.find(p => p.id === item.product)
+  const baseUnitName = product?.base_unit_name || 'base unit'
+  
+  if (!unit) {
+    return `${item.quantity} ${baseUnitName}`
+  }
+  
+  const baseQty = convertToBaseUnit(item.quantity, unit)
+  return `${baseQty} ${baseUnitName}`
 }
 
 const addItem = () => {
