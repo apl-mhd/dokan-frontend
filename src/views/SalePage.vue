@@ -38,6 +38,13 @@
           <td><strong>{{ formatCurrency(sale.grand_total) }}</strong></td>
           <td>
             <button
+              class="btn btn-sm btn-outline-success me-2"
+              @click="handleDownloadPDF(sale)"
+              title="Download PDF"
+            >
+              <i class="bi bi-file-pdf"></i>
+            </button>
+            <button
               class="btn btn-sm btn-outline-info me-2"
               @click="handleView(sale)"
               title="View"
@@ -148,6 +155,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import api from '../utility/axios'
 import { useSaleStore } from '../stores/sale.store'
 import { useCustomerStore } from '../stores/customer.store'
 import { useWarehouseStore } from '../stores/warehouse.store'
@@ -302,6 +310,28 @@ const handleDelete = async (sale) => {
       console.error('Error deleting sale:', error)
       // Error is handled by store and displayed in ErrorAlert
     }
+  }
+}
+
+const handleDownloadPDF = async (sale) => {
+  try {
+    const response = await api.get(`/sales/${sale.id}/pdf/`, {
+      responseType: 'blob'
+    })
+    
+    // Create a blob URL and trigger download
+    const blob = new Blob([response.data], { type: 'application/pdf' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `invoice_${sale.invoice_number || sale.id}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('Error downloading PDF:', error)
+    alert('Failed to download PDF invoice. Please try again.')
   }
 }
 
