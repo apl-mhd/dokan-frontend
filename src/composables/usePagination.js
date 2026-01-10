@@ -1,61 +1,63 @@
-import { ref, computed } from 'vue'
+import { ref, computed } from "vue";
 
 /**
  * Composable for pagination logic
  * Manages pagination state and provides helper functions
  */
 export function usePagination(initialPageSize = 10) {
-  const currentPage = ref(1)
-  const pageSize = ref(initialPageSize)
-  const totalItems = ref(0)
+  const currentPage = ref(1);
+  const pageSize = ref(initialPageSize);
+  const totalItems = ref(0);
 
   const totalPages = computed(() => {
-    return Math.ceil(totalItems.value / pageSize.value)
-  })
+    return Math.ceil(totalItems.value / pageSize.value);
+  });
 
   const hasNextPage = computed(() => {
-    return currentPage.value < totalPages.value
-  })
+    return currentPage.value < totalPages.value;
+  });
 
   const hasPrevPage = computed(() => {
-    return currentPage.value > 1
-  })
+    return currentPage.value > 1;
+  });
 
   const startIndex = computed(() => {
-    return (currentPage.value - 1) * pageSize.value + 1
-  })
+    return (currentPage.value - 1) * pageSize.value + 1;
+  });
 
   const endIndex = computed(() => {
-    return Math.min(currentPage.value * pageSize.value, totalItems.value)
-  })
+    return Math.min(currentPage.value * pageSize.value, totalItems.value);
+  });
 
   const goToPage = (page) => {
-    if (page >= 1 && page <= totalPages.value) {
-      currentPage.value = page
+    if (page >= 1) {
+      // Allow setting page even if totalPages is unknown yet (e.g., when filters reset)
+      // The validation against totalPages will happen during display/rendering
+      currentPage.value = page;
     }
-  }
+  };
 
   const nextPage = () => {
     if (hasNextPage.value) {
-      currentPage.value++
+      currentPage.value++;
     }
-  }
+  };
 
   const prevPage = () => {
     if (hasPrevPage.value) {
-      currentPage.value--
+      currentPage.value--;
     }
-  }
+  };
 
   const setPageSize = (size) => {
-    pageSize.value = size
-    currentPage.value = 1 // Reset to first page when changing page size
-  }
+    pageSize.value = size;
+    currentPage.value = 1; // Reset to first page when changing page size
+  };
 
   const reset = () => {
-    currentPage.value = 1
-    totalItems.value = 0
-  }
+    currentPage.value = 1;
+    totalItems.value = 0;
+  };
 
   /**
    * Update pagination from API response
@@ -63,11 +65,13 @@ export function usePagination(initialPageSize = 10) {
    */
   const updateFromResponse = (paginationData) => {
     if (paginationData) {
-      totalItems.value = paginationData.totalItems || paginationData.count || 0
-      currentPage.value = paginationData.currentPage || paginationData.page || 1
-      pageSize.value = paginationData.pageSize || paginationData.page_size || pageSize.value
+      totalItems.value = paginationData.totalItems || paginationData.count || 0;
+      currentPage.value =
+        paginationData.currentPage || paginationData.page || 1;
+      pageSize.value =
+        paginationData.pageSize || paginationData.page_size || pageSize.value;
     }
-  }
+  };
 
   /**
    * Get pagination parameters for API requests
@@ -76,9 +80,9 @@ export function usePagination(initialPageSize = 10) {
   const getParams = () => {
     return {
       page: currentPage.value,
-      page_size: pageSize.value
-    }
-  }
+      page_size: pageSize.value,
+    };
+  };
 
   return {
     currentPage,
@@ -95,7 +99,6 @@ export function usePagination(initialPageSize = 10) {
     setPageSize,
     reset,
     updateFromResponse,
-    getParams
-  }
+    getParams,
+  };
 }
-

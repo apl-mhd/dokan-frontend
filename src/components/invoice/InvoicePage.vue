@@ -24,6 +24,16 @@
       :empty-message="config.emptyMessage"
       @page-change="handlePageChange"
     >
+      <template #filters>
+        <DataTableFilters
+          v-model:search="filters.search"
+          v-model:status="filters.status"
+          :status-options="config.statusOptions"
+          :status-label="getStatusFilterLabel()"
+          :search-placeholder="getSearchPlaceholder()"
+          @filter-change="handleFilterChange"
+        />
+      </template>
       <template #body="{ items }">
         <tr v-for="invoice in items" :key="invoice.id">
           <td><strong>{{ invoice.invoice_number || invoice.id }}</strong></td>
@@ -257,6 +267,7 @@ import PageHeader from '../common/PageHeader.vue'
 import LoadingSpinner from '../common/LoadingSpinner.vue'
 import ErrorAlert from '../common/ErrorAlert.vue'
 import DataTable from '../common/DataTable.vue'
+import DataTableFilters from '../common/DataTableFilters.vue'
 import InvoiceItemsTable from '../common/InvoiceItemsTable.vue'
 
 // Props
@@ -286,6 +297,10 @@ const availableUnits = ref([])
 const unitsCache = ref(new Map())
 const currentItemConversion = ref('')
 const invoiceItemsRef = ref(null)
+const filters = ref({
+  search: '',
+  status: ''
+})
 
 const formData = ref({
   [config.entityField]: '',
@@ -320,7 +335,17 @@ onMounted(async () => {
 
 // Methods
 const fetchInvoices = async () => {
-  await invoiceStore[config.fetchMethod](pagination.getParams())
+  const params = pagination.getParams()
+  
+  // Add filter parameters
+  if (filters.value.search) {
+    params.search = filters.value.search
+  }
+  if (filters.value.status) {
+    params.status = filters.value.status
+  }
+  
+  await invoiceStore[config.fetchMethod](params)
   if (invoiceStore.pagination) {
     pagination.updateFromResponse(invoiceStore.pagination)
   }
@@ -329,6 +354,29 @@ const fetchInvoices = async () => {
 const handlePageChange = async (page) => {
   pagination.goToPage(page)
   await fetchInvoices()
+}
+
+const handleFilterChange = async () => {
+  // Reset to first page when filters change
+  pagination.goToPage(1)
+  await fetchInvoices()
+}
+
+const getStatusFilterLabel = () => {
+  // For purchase, it's "Delivery Status" or just "Status"
+  // For sale, it's "Delivery Status" 
+  if (props.type === 'purchase' || props.type === 'purchase_return') {
+    return 'Delivery Status'
+  }
+  return 'Delivery Status'
+}
+
+const getSearchPlaceholder = () => {
+  // Different placeholders based on invoice type
+  if (props.type === 'purchase' || props.type === 'purchase_return') {
+    return 'Search by invoice number, supplier...'
+  }
+  return 'Search by invoice number, customer...'
 }
 
 const handleCreate = () => {

@@ -33,10 +33,21 @@ export const usePurchaseStore = defineStore("purchase", () => {
           ),
         };
       } else if (response.data.data) {
-        // Handle wrapped response
+        // Handle wrapped response with pagination metadata
         purchases.value = response.data.data || [];
-        pagination.value.totalItems = purchases.value.length;
-        pagination.value.totalPages = 1;
+        if (response.data.count !== undefined && params.page && params.page_size) {
+          // Paginated response with metadata
+          pagination.value = {
+            currentPage: response.data.page || params.page || 1,
+            pageSize: response.data.page_size || params.page_size || 10,
+            totalItems: response.data.count || purchases.value.length,
+            totalPages: response.data.total_pages || Math.ceil((response.data.count || purchases.value.length) / (params.page_size || 10))
+          };
+        } else {
+          // Non-paginated wrapped response
+          pagination.value.totalItems = purchases.value.length;
+          pagination.value.totalPages = 1;
+        }
       } else {
         // Handle direct array response
         purchases.value = response.data || [];
