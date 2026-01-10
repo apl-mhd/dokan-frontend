@@ -105,8 +105,8 @@
                   {{ transaction.quantity > 0 ? '+' : '' }}{{ formatNumber(transaction.quantity) }}
                 </span>
               </td>
+              <td>{{ transaction.balance_after || 'N/A' }}</td>
               <td>{{ transaction.unit_name || 'N/A' }}</td>
-              <td>{{ transaction.reference || '-' }}</td>
               <td>{{ truncate(transaction.notes, 50) }}</td>
             </tr>
           </template>
@@ -154,6 +154,7 @@ const transactionColumns = [
   { key: 'type', label: 'Type', width: '120px' },
   { key: 'quantity', label: 'Quantity', width: '100px' },
   { key: 'unit', label: 'Unit', width: '100px' },
+  { key: 'balance_after', label: 'Balance After', width: '120px' },
   { key: 'reference', label: 'Reference', width: '120px' },
   { key: 'notes', label: 'Notes' }
 ]

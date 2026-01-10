@@ -16,14 +16,7 @@
     <ErrorAlert :error="purchaseStore.error" title="Error" dismissible @dismiss="purchaseStore.error = null" />
 
     <!-- Data Table -->
-    <DataTable
-      v-if="!purchaseStore.loading"
-      :columns="columns"
-      :items="purchaseStore.purchases || []"
-      :pagination="paginationData"
-      empty-message="No purchases found. Click 'New Purchase' to create one."
-      @page-change="handlePageChange"
-    >
+    <DataTable v-if="!purchaseStore.loading" :columns="columns" :items="purchaseStore.purchases || []" :pagination="paginationData" empty-message="No purchases found. Click 'New Purchase' to create one." @page-change="handlePageChange">
       <template #body="{ items }">
         <tr v-for="purchase in items" :key="purchase.id">
           <td><strong>{{ purchase.invoice_number || purchase.id }}</strong></td>
@@ -37,25 +30,13 @@
           </td>
           <td><strong>{{ formatCurrency(purchase.grand_total) }}</strong></td>
           <td>
-            <button
-              class="btn btn-sm btn-outline-info me-2"
-              @click="handleView(purchase)"
-              title="View"
-            >
+            <button class="btn btn-sm btn-outline-info me-2" @click="handleView(purchase)" title="View">
               <i class="bi bi-eye"></i>
             </button>
-            <button
-              class="btn btn-sm btn-outline-primary me-2"
-              @click="handleEdit(purchase)"
-              title="Edit"
-            >
+            <button class="btn btn-sm btn-outline-primary me-2" @click="handleEdit(purchase)" title="Edit">
               <i class="bi bi-pencil"></i>
             </button>
-            <button
-              class="btn btn-sm btn-outline-danger"
-              @click="handleDelete(purchase)"
-              title="Delete"
-            >
+            <button class="btn btn-sm btn-outline-danger" @click="handleDelete(purchase)" title="Delete">
               <i class="bi bi-trash"></i>
             </button>
           </td>
@@ -110,24 +91,12 @@
             </div>
 
             <!-- Invoice Items -->
-            <InvoiceItemsTable
-              ref="invoiceItemsRef"
-              :items="formData.items"
-              :products="productStore.products"
-              :available-units="availableUnits"
-              :show-base-unit-qty="true"
-              :show-base-unit-note="true"
-              add-item-title="Add Items"
-              @add-item="addItem"
-              @remove-item="removeItem"
-              @product-change="loadProductUnits"
-              @unit-change="updateUnitConversion"
-            >
+            <InvoiceItemsTable ref="invoiceItemsRef" :items="formData.items" :products="productStore.products" :available-units="availableUnits" :show-base-unit-qty="true" :show-base-unit-note="true" add-item-title="Add Items" @add-item="addItem" @remove-item="removeItem" @product-change="loadProductUnits" @unit-change="updateUnitConversion">
               <template #unitConversion>
                 {{ currentItemConversion }}
               </template>
               <template #base-unit-qty="{ item }">
-                <span class="badge bg-info">
+                <span class="badge bg-info">{{ item }}
                   {{ getBaseUnitQuantity(item) }}
                 </span>
               </template>
@@ -141,12 +110,7 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button
-              type="button"
-              class="btn btn-primary"
-              @click="handleSave"
-              :disabled="formData.items.length === 0"
-            >
+            <button type="button" class="btn btn-primary" @click="handleSave" :disabled="formData.items.length === 0">
               <i class="bi bi-save me-2"></i>{{ isEditing ? 'Update' : 'Save' }} Purchase
             </button>
           </div>
@@ -344,6 +308,9 @@ const updateUnitConversion = () => {
 
 const getBaseUnitQuantity = (item) => {
   const unit = availableUnits.value.find(u => u.id === item.unit)
+
+  return availableUnits.value
+
   const product = productStore.products.find(p => p.id === item.product)
   const baseUnitName = product?.base_unit_name || 'base unit'
   
@@ -352,7 +319,7 @@ const getBaseUnitQuantity = (item) => {
   }
   
   const baseQty = convertToBaseUnit(item.quantity, unit)
-  return `${baseQty} ${baseUnitName}`
+  return `${baseQty} ${unit}`
 }
 
 const addItem = (item) => {
