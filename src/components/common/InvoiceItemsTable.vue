@@ -2,8 +2,9 @@
   <div>
     <!-- Add Item Section -->
     <div class="card mb-3">
-      <div class="card-header bg-light">
-        <strong>{{ addItemTitle }}</strong>
+      <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <strong>{{ editingIndex !== null ? 'Edit Item' : addItemTitle }}</strong>
+        <span v-if="editingIndex !== null" class="badge bg-info">Editing item #{{ editingIndex + 1 }}</span>
       </div>
       <div class="card-body">
         <div class="row align-items-end">
@@ -59,9 +60,17 @@
           </div>
 
           <div class="col-md-1">
-            <button type="button" class="btn btn-success w-100" @click="handleAddItem">
+            <button v-if="editingIndex === null" type="button" class="btn btn-success w-100" @click="handleAddItem">
               <i class="bi bi-plus"></i>
             </button>
+            <div v-else class="d-flex gap-1">
+              <button type="button" class="btn btn-primary flex-fill" @click="handleUpdateItem">
+                <i class="bi bi-check"></i>
+              </button>
+              <button type="button" class="btn btn-secondary flex-fill" @click="handleCancelEdit">
+                <i class="bi bi-x"></i>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -74,8 +83,8 @@
           <tr>
             <th>#</th>
             <th>Product</th>
-            <th>Unit</th>
             <th>Quantity</th>
+            <th>Unit</th>
             <th v-if="showBaseUnitQty">Base Unit Qty</th>
             <th>Unit Price</th>
             <th>Line Total</th>
@@ -90,12 +99,12 @@
                 {{ getProductName(item.product) }}
               </slot>
             </td>
+            <td>{{ item.quantity }}</td>
             <td>
               <slot name="unit-name" :item="item">
-                {{ getUnitName(item.unit) }}
+                {{ getUnitName(item.unit, item) }}
               </slot>
             </td>
-            <td>{{ item.quantity }}</td>
             <td v-if="showBaseUnitQty">
               <slot name="base-unit-qty" :item="item">
                 <span class="badge bg-info">{{ item.base_unit_quantity || '-' }}</span>
@@ -104,9 +113,26 @@
             <td>{{ formatCurrency(item.unit_price) }}</td>
             <td><strong>{{ formatCurrency(item.line_total || (item.quantity * item.unit_price)) }}</strong></td>
             <td>
-              <button type="button" class="btn btn-sm btn-danger" @click="$emit('remove-item', index)">
-                <i class="bi bi-trash"></i>
-              </button>
+              <div class="btn-group" role="group">
+                <button 
+                  type="button" 
+                  class="btn btn-sm btn-primary" 
+                  @click="handleEditItem(index)"
+                  :disabled="editingIndex !== null && editingIndex !== index"
+                  title="Edit"
+                >
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button 
+                  type="button" 
+                  class="btn btn-sm btn-danger" 
+                  @click="$emit('remove-item', index)"
+                  :disabled="editingIndex !== null"
+                  title="Delete"
+                >
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
             </td>
           </tr>
           <tr v-if="items.length === 0">
@@ -165,10 +191,11 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['add-item', 'remove-item', 'product-change', 'unit-change'])
+const emit = defineEmits(['add-item', 'update-item', 'remove-item', 'product-change', 'unit-change'])
 
 const { formatCurrency: formatCurrencyBase } = useFormatter()
 
+const editingIndex = ref(null)
 const currentItem = ref({
   product: '',
   unit: '',
@@ -193,9 +220,75 @@ const handleAddItem = () => {
     return
   }
 
-  emit('add-item', { ...currentItem.value })
+  // Get unit name from availableUnits before adding
+  const selectedUnit = props.availableUnits.find(u => u.id === currentItem.value.unit)
+  const unitName = selectedUnit ? selectedUnit.name : null
+
+  emit('add-item', { 
+    ...currentItem.value,
+    unit_name: unitName // Include unit name for display
+  })
   
   // Reset current item
+  resetCurrentItem()
+}
+
+const handleEditItem = (index) => {
+  const item = props.items[index]
+  if (!item) return
+  
+  editingIndex.value = index
+  
+  // Set the current item data
+  currentItem.value = {
+    product: item.product,
+    unit: item.unit,
+    quantity: parseFloat(item.quantity),
+    unit_price: parseFloat(item.unit_price),
+    line_total: parseFloat(item.line_total || (item.quantity * item.unit_price))
+  }
+  
+  // Trigger product-change event to load units (will update availableUnits prop)
+  emit('product-change', item.product)
+  
+  // Recalculate line total
+  calculateLineTotal()
+}
+
+const handleUpdateItem = () => {
+  if (!currentItem.value.product || !currentItem.value.unit || currentItem.value.quantity <= 0 || currentItem.value.unit_price < 0) {
+    alert('Please fill all item fields correctly')
+    return
+  }
+
+  if (editingIndex.value === null) {
+    alert('No item selected for editing')
+    return
+  }
+
+  // Get the original item to preserve unit_name if lookup fails
+  const originalItem = props.items[editingIndex.value]
+  
+  // Get unit name from availableUnits before updating
+  const selectedUnit = props.availableUnits.find(u => u.id === currentItem.value.unit)
+  const unitName = selectedUnit ? selectedUnit.name : (originalItem?.unit_name || null)
+
+  emit('update-item', editingIndex.value, { 
+    ...currentItem.value,
+    unit_name: unitName // Include unit name for display
+  })
+  
+  // Reset after update
+  resetCurrentItem()
+  editingIndex.value = null
+}
+
+const handleCancelEdit = () => {
+  resetCurrentItem()
+  editingIndex.value = null
+}
+
+const resetCurrentItem = () => {
   currentItem.value = {
     product: '',
     unit: '',
@@ -210,9 +303,22 @@ const getProductName = (productId) => {
   return product ? product.name : `Product ${productId}`
 }
 
-const getUnitName = (unitId) => {
-  const unit = props.availableUnits.find(u => u.id === unitId)
-  return unit ? unit.name : `Unit ${unitId}`
+const getUnitName = (unitId, item = null) => {
+  // First check if item has unit_name (from API or stored during add/update)
+  if (item && item.unit_name) {
+    return item.unit_name
+  }
+  
+  // Try to find unit in availableUnits (for current form items)
+  if (unitId) {
+    const unit = props.availableUnits.find(u => u.id === unitId)
+    if (unit) {
+      return unit.name
+    }
+  }
+  
+  // Final fallback
+  return unitId ? `Unit ${unitId}` : 'N/A'
 }
 
 const formatCurrency = (amount) => {
@@ -222,15 +328,9 @@ const formatCurrency = (amount) => {
 // Expose currentItem for parent access
 defineExpose({
   currentItem,
-  resetCurrentItem: () => {
-    currentItem.value = {
-      product: '',
-      unit: '',
-      quantity: 0,
-      unit_price: 0,
-      line_total: 0
-    }
-  }
+  editingIndex,
+  resetCurrentItem,
+  cancelEdit: handleCancelEdit
 })
 </script>
 

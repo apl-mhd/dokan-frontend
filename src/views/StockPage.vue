@@ -6,26 +6,12 @@
     <!-- Tabs -->
     <ul class="nav nav-tabs mb-4" role="tablist">
       <li class="nav-item" role="presentation">
-        <button
-          class="nav-link active"
-          id="stock-tab"
-          data-bs-toggle="tab"
-          data-bs-target="#stock"
-          type="button"
-          role="tab"
-        >
+        <button class="nav-link active" id="stock-tab" data-bs-toggle="tab" data-bs-target="#stock" type="button" role="tab">
           <i class="bi bi-box me-2"></i>Current Stock
         </button>
       </li>
       <li class="nav-item" role="presentation">
-        <button
-          class="nav-link"
-          id="transactions-tab"
-          data-bs-toggle="tab"
-          data-bs-target="#transactions"
-          type="button"
-          role="tab"
-        >
+        <button class="nav-link" id="transactions-tab" data-bs-toggle="tab" data-bs-target="#transactions" type="button" role="tab">
           <i class="bi bi-arrow-left-right me-2"></i>Stock Transactions
         </button>
       </li>
@@ -42,14 +28,7 @@
         <ErrorAlert :error="stockStore.error" title="Error" dismissible @dismiss="stockStore.error = null" />
 
         <!-- Stock Table -->
-        <DataTable
-          v-if="!stockStore.loading"
-          :columns="stockColumns"
-          :items="stockStore.stocks || []"
-          :pagination="stockPaginationData"
-          empty-message="No stock data found."
-          @page-change="handleStockPageChange"
-        >
+        <DataTable v-if="!stockStore.loading" :columns="stockColumns" :items="stockStore.stocks || []" :pagination="stockPaginationData" empty-message="No stock data found." @page-change="handleStockPageChange">
           <template #body="{ items }">
             <tr v-for="stock in items" :key="stock.id">
               <td>{{ stock.id }}</td>
@@ -73,22 +52,10 @@
         <LoadingSpinner v-if="stockStore.loadingTransactions" />
 
         <!-- Error State -->
-        <ErrorAlert
-          :error="stockStore.transactionsError"
-          title="Error"
-          dismissible
-          @dismiss="stockStore.transactionsError = null"
-        />
+        <ErrorAlert :error="stockStore.transactionsError" title="Error" dismissible @dismiss="stockStore.transactionsError = null" />
 
         <!-- Transactions Table -->
-        <DataTable
-          v-if="!stockStore.loadingTransactions"
-          :columns="transactionColumns"
-          :items="stockStore.transactions || []"
-          :pagination="transactionPaginationData"
-          empty-message="No stock transactions found."
-          @page-change="handleTransactionPageChange"
-        >
+        <DataTable v-if="!stockStore.loadingTransactions" :columns="transactionColumns" :items="stockStore.transactions || []" :pagination="transactionPaginationData" empty-message="No stock transactions found." @page-change="handleTransactionPageChange">
           <template #body="{ items }">
             <tr v-for="transaction in items" :key="transaction.id">
               <td>{{ transaction.id }}</td>
@@ -104,9 +71,13 @@
                 <span :class="transaction.quantity > 0 ? 'text-success' : 'text-danger'">
                   {{ transaction.quantity > 0 ? '+' : '' }}{{ formatNumber(transaction.quantity) }}
                 </span>
+                <span class="text-muted ms-1">{{ transaction.unit_name || 'N/A' }}</span>
               </td>
-              <td>{{ transaction.balance_after || 'N/A' }}</td>
-              <td>{{ transaction.unit_name || 'N/A' }}</td>
+              <td>
+                <strong v-if="transaction.balance_after != null">{{ formatNumber(transaction.balance_after) }}</strong>
+                <span v-else class="text-muted">N/A</span>
+                <span v-if="transaction.balance_after != null" class="text-muted ms-1">{{ transaction.unit_name || 'N/A' }}</span>
+              </td>
               <td>{{ truncate(transaction.notes, 50) }}</td>
             </tr>
           </template>
@@ -152,10 +123,8 @@ const transactionColumns = [
   { key: 'product', label: 'Product' },
   { key: 'warehouse', label: 'Warehouse' },
   { key: 'type', label: 'Type', width: '120px' },
-  { key: 'quantity', label: 'Quantity', width: '100px' },
-  { key: 'unit', label: 'Unit', width: '100px' },
-  { key: 'balance_after', label: 'Balance After', width: '120px' },
-  { key: 'reference', label: 'Reference', width: '120px' },
+  { key: 'quantity', label: 'Quantity', width: '150px' },
+  { key: 'balance_after', label: 'Balance After', width: '150px' },
   { key: 'notes', label: 'Notes' }
 ]
 
