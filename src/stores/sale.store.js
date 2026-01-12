@@ -42,8 +42,8 @@ export const useSaleStore = defineStore('sale', () => {
           }
         } else {
           // Non-paginated wrapped response
-          pagination.value.totalItems = sales.value.length
-          pagination.value.totalPages = 1
+        pagination.value.totalItems = sales.value.length
+        pagination.value.totalPages = 1
         }
       } else {
         // Handle direct array response

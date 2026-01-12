@@ -45,8 +45,8 @@ export const usePurchaseStore = defineStore("purchase", () => {
           };
         } else {
           // Non-paginated wrapped response
-          pagination.value.totalItems = purchases.value.length;
-          pagination.value.totalPages = 1;
+        pagination.value.totalItems = purchases.value.length;
+        pagination.value.totalPages = 1;
         }
       } else {
         // Handle direct array response

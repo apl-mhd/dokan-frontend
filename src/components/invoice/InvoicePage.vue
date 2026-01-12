@@ -53,6 +53,15 @@
             <button class="btn btn-sm btn-outline-info me-2" @click="handleView(invoice)" title="View">
               <i class="bi bi-eye"></i>
             </button>
+            <LabelPrinter
+              v-if="props.type === 'sale' || props.type === 'sale_return'"
+              :sale="invoice"
+              :show-button="true"
+              :show-button-text="false"
+              button-class="btn btn-sm btn-outline-warning me-2"
+              button-icon="bi bi-printer"
+              button-title="Print Label"
+            />
             <button
               v-if="invoice.status !== config.finalStatus"
               class="btn btn-sm btn-outline-primary me-2"
@@ -227,6 +236,18 @@
             </template>
           </div>
           <div class="modal-footer">
+            <div class="me-auto">
+              <LabelPrinter
+                v-if="isViewMode && (props.type === 'sale' || props.type === 'sale_return') && selectedInvoice"
+                :sale="selectedInvoice"
+                :show-button="true"
+                :show-button-text="true"
+                button-class="btn btn-warning"
+                button-icon="bi bi-printer me-2"
+                button-text="Print Labels"
+                button-title="Print Labels for All Items"
+              />
+            </div>
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ isViewMode ? 'Close' : 'Cancel' }}</button>
             <button
               v-if="!isViewMode"
@@ -268,6 +289,7 @@ import LoadingSpinner from '../common/LoadingSpinner.vue'
 import ErrorAlert from '../common/ErrorAlert.vue'
 import DataTable from '../common/DataTable.vue'
 import DataTableFilters from '../common/DataTableFilters.vue'
+import LabelPrinter from '../common/LabelPrinter.vue'
 import InvoiceItemsTable from '../common/InvoiceItemsTable.vue'
 
 // Props
