@@ -16,23 +16,9 @@
     <ErrorAlert :error="invoiceStore.error" title="Error" dismissible @dismiss="invoiceStore.error = null" />
 
     <!-- Data Table -->
-    <DataTable
-      v-if="!invoiceStore.loading"
-      :columns="columns"
-      :items="invoiceStore[config.itemsField] || []"
-      :pagination="paginationData"
-      :empty-message="config.emptyMessage"
-      @page-change="handlePageChange"
-    >
+    <DataTable v-if="!invoiceStore.loading" :columns="columns" :items="invoiceStore[config.itemsField] || []" :pagination="paginationData" :empty-message="config.emptyMessage" @page-change="handlePageChange">
       <template #filters>
-        <DataTableFilters
-          v-model:search="filters.search"
-          v-model:status="filters.status"
-          :status-options="config.statusOptions"
-          :status-label="getStatusFilterLabel()"
-          :search-placeholder="getSearchPlaceholder()"
-          @filter-change="handleFilterChange"
-        />
+        <DataTableFilters v-model:search="filters.search" v-model:status="filters.status" v-model:paymentStatus="filters.paymentStatus" :status-options="config.statusOptions" :payment-status-options="config.paymentStatusOptions" :status-label="getStatusFilterLabel()" :search-placeholder="getSearchPlaceholder()" @filter-change="handleFilterChange" />
       </template>
       <template #body="{ items }">
         <tr v-for="invoice in items" :key="invoice.id">
@@ -45,6 +31,11 @@
               {{ invoice.status }}
             </span>
           </td>
+          <td>
+            <span class="badge" :class="getPaymentStatusClass(invoice.payment_status)">
+              {{ invoice.payment_status || 'unpaid' }}
+            </span>
+          </td>
           <td><strong>{{ formatCurrency(invoice.grand_total) }}</strong></td>
           <td>
             <button class="btn btn-sm btn-outline-success me-2" @click="handleDownloadPDF(invoice)" title="Download PDF">
@@ -53,21 +44,8 @@
             <button class="btn btn-sm btn-outline-info me-2" @click="handleView(invoice)" title="View">
               <i class="bi bi-eye"></i>
             </button>
-            <LabelPrinter
-              v-if="props.type === 'sale' || props.type === 'sale_return'"
-              :sale="invoice"
-              :show-button="true"
-              :show-button-text="false"
-              button-class="btn btn-sm btn-outline-warning me-2"
-              button-icon="bi bi-printer"
-              button-title="Print Label"
-            />
-            <button
-              v-if="invoice.status !== config.finalStatus"
-              class="btn btn-sm btn-outline-primary me-2"
-              @click="handleEdit(invoice)"
-              title="Edit"
-            >
+            <LabelPrinter v-if="props.type === 'sale' || props.type === 'sale_return'" :sale="invoice" :show-button="true" :show-button-text="false" button-class="btn btn-sm btn-outline-warning me-2" button-icon="bi bi-printer" button-title="Print Label" />
+            <button v-if="invoice.status !== config.finalStatus" class="btn btn-sm btn-outline-primary me-2" @click="handleEdit(invoice)" title="Edit">
               <i class="bi bi-pencil"></i>
             </button>
             <button class="btn btn-sm btn-outline-danger" @click="handleDelete(invoice)" title="Delete">
@@ -117,9 +95,29 @@
                     </span>
                   </p>
                 </div>
-                <div class="col-md-9">
+                <div class="col-md-3">
+                  <label class="form-label fw-bold">Payment Status</label>
+                  <p>
+                    <span class="badge" :class="getPaymentStatusClass(selectedInvoice?.payment_status)">
+                      {{ selectedInvoice?.payment_status || 'unpaid' }}
+                    </span>
+                  </p>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label fw-bold">Paid Amount</label>
+                  <p class="form-control-plaintext">{{ formatCurrency(selectedInvoice?.paid_amount || 0) }}</p>
+                </div>
+                <div class="col-md-3">
                   <label class="form-label fw-bold">Grand Total</label>
                   <p class="form-control-plaintext fs-5 text-success fw-bold">{{ formatCurrency(selectedInvoice?.grand_total) }}</p>
+                </div>
+              </div>
+              <div class="row mb-4" v-if="selectedInvoice">
+                <div class="col-md-3">
+                  <label class="form-label fw-bold">Balance</label>
+                  <p class="form-control-plaintext fs-5" :class="(selectedInvoice.grand_total - (selectedInvoice.paid_amount || 0)) > 0 ? 'text-danger' : 'text-success'">
+                    {{ formatCurrency((selectedInvoice.grand_total || 0) - (selectedInvoice.paid_amount || 0)) }}
+                  </p>
                 </div>
               </div>
 
@@ -150,9 +148,37 @@
                     </tr>
                   </tbody>
                   <tfoot v-if="selectedInvoice?.items && selectedInvoice.items.length > 0">
+                    <tr>
+                      <td colspan="4" class="text-end"><strong>Sub Total:</strong></td>
+                      <td colspan="2"><strong>{{ formatCurrency(selectedInvoice.sub_total || 0) }}</strong></td>
+                    </tr>
+                    <tr v-if="selectedInvoice.tax > 0">
+                      <td colspan="4" class="text-end"><strong>Tax:</strong></td>
+                      <td colspan="2"><strong>{{ formatCurrency(selectedInvoice.tax || 0) }}</strong></td>
+                    </tr>
+                    <tr v-if="selectedInvoice.delivery_charge > 0">
+                      <td colspan="4" class="text-end"><strong>Delivery Charge:</strong></td>
+                      <td colspan="2"><strong>{{ formatCurrency(selectedInvoice.delivery_charge || 0) }}</strong></td>
+                    </tr>
+                    <tr v-if="selectedInvoice.discount > 0">
+                      <td colspan="4" class="text-end"><strong>Discount:</strong></td>
+                      <td colspan="2"><strong class="text-danger">-{{ formatCurrency(selectedInvoice.discount || 0) }}</strong></td>
+                    </tr>
                     <tr class="table-success">
                       <td colspan="4" class="text-end"><strong>Grand Total:</strong></td>
                       <td colspan="2"><strong>{{ formatCurrency(selectedInvoice.grand_total) }}</strong></td>
+                    </tr>
+                    <tr v-if="selectedInvoice.paid_amount > 0">
+                      <td colspan="4" class="text-end"><strong>Paid Amount:</strong></td>
+                      <td colspan="2"><strong class="text-success">{{ formatCurrency(selectedInvoice.paid_amount || 0) }}</strong></td>
+                    </tr>
+                    <tr v-if="selectedInvoice.paid_amount > 0">
+                      <td colspan="4" class="text-end"><strong>Balance:</strong></td>
+                      <td colspan="2">
+                        <strong :class="(selectedInvoice.grand_total - (selectedInvoice.paid_amount || 0)) > 0 ? 'text-danger' : 'text-success'">
+                          {{ formatCurrency((selectedInvoice.grand_total || 0) - (selectedInvoice.paid_amount || 0)) }}
+                        </strong>
+                      </td>
                     </tr>
                   </tfoot>
                 </table>
@@ -173,11 +199,7 @@
                   <label class="form-label">{{ config.entityLabel }} <span class="text-danger">*</span></label>
                   <select v-model="formData[config.entityField]" class="form-select" required>
                     <option value="">Select {{ config.entityLabel }}</option>
-                    <option
-                      v-for="entity in entityStore[getEntityListName()]"
-                      :key="entity.id"
-                      :value="entity.id"
-                    >
+                    <option v-for="entity in entityStore[getEntityListName()]" :key="entity.id" :value="entity.id">
                       {{ entity.name }}
                     </option>
                   </select>
@@ -209,24 +231,62 @@
               </div>
 
               <!-- Invoice Items -->
-              <InvoiceItemsTable
-                ref="invoiceItemsRef"
-                :items="formData.items"
-                :products="productStore.products"
-                :available-units="availableUnits"
-                :show-base-unit-qty="false"
-                :show-base-unit-note="false"
-                add-item-title="Add Items"
-                @add-item="addItem"
-                @update-item="updateItem"
-                @remove-item="removeItem"
-                @product-change="loadProductUnits"
-                @unit-change="handleUnitChange"
-              >
+              <InvoiceItemsTable ref="invoiceItemsRef" :items="formData.items" :products="productStore.products" :available-units="availableUnits" :show-base-unit-qty="false" :show-base-unit-note="false" add-item-title="Add Items" @add-item="addItem" @update-item="updateItem" @remove-item="removeItem" @product-change="loadProductUnits" @unit-change="handleUnitChange">
                 <template #unit-name="{ item }">
                   {{ getUnitNameFromItem(item) }}
                 </template>
               </InvoiceItemsTable>
+
+              <!-- Financial Summary -->
+              <div class="card mb-3">
+                <div class="card-header">
+                  <h6 class="mb-0">Financial Summary</h6>
+                </div>
+                <div class="card-body">
+                  <div class="row mb-3">
+                    <div class="col-md-3">
+                      <label class="form-label">Sub Total</label>
+                      <input v-model.number="formData.sub_total" type="number" step="0.01" class="form-control" readonly />
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">Tax</label>
+                      <input v-model.number="formData.tax" type="number" step="0.01" min="0" class="form-control" @input="calculateGrandTotal" />
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">Delivery Charge</label>
+                      <input v-model.number="formData.delivery_charge" type="number" step="0.01" min="0" class="form-control" @input="calculateGrandTotal" />
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">Discount</label>
+                      <input v-model.number="formData.discount" type="number" step="0.01" min="0" class="form-control" @input="calculateGrandTotal" />
+                    </div>
+                  </div>
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <label class="form-label">Grand Total</label>
+                      <input :value="formData.grand_total.toFixed(2)" type="text" class="form-control bg-light" readonly />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Payment Status</label>
+                      <select v-model="formData.payment_status" class="form-select">
+                        <option v-for="status in config.paymentStatusOptions" :key="status" :value="status">
+                          {{ status.charAt(0).toUpperCase() + status.slice(1) }}
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6">
+                      <label class="form-label">Paid Amount</label>
+                      <input v-model.number="formData.paid_amount" type="number" step="0.01" min="0" class="form-control" @input="updatePaymentStatus" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Balance</label>
+                      <input :value="(formData.grand_total - formData.paid_amount).toFixed(2)" type="text" class="form-control bg-light" readonly />
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               <!-- Notes -->
               <div class="mb-3">
@@ -237,33 +297,13 @@
           </div>
           <div class="modal-footer">
             <div class="me-auto">
-              <LabelPrinter
-                v-if="isViewMode && (props.type === 'sale' || props.type === 'sale_return') && selectedInvoice"
-                :sale="selectedInvoice"
-                :show-button="true"
-                :show-button-text="true"
-                button-class="btn btn-warning"
-                button-icon="bi bi-printer me-2"
-                button-text="Print Labels"
-                button-title="Print Labels for All Items"
-              />
+              <LabelPrinter v-if="isViewMode && (props.type === 'sale' || props.type === 'sale_return') && selectedInvoice" :sale="selectedInvoice" :show-button="true" :show-button-text="true" button-class="btn btn-warning" button-icon="bi bi-printer me-2" button-text="Print Labels" button-title="Print Labels for All Items" />
             </div>
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ isViewMode ? 'Close' : 'Cancel' }}</button>
-            <button
-              v-if="!isViewMode"
-              type="button"
-              class="btn btn-primary"
-              @click="handleSave"
-              :disabled="formData.items.length === 0"
-            >
+            <button v-if="!isViewMode" type="button" class="btn btn-primary" @click="handleSave" :disabled="formData.items.length === 0">
               <i class="bi bi-save me-2"></i>{{ config.editLabels.button(isEditing) }}
             </button>
-            <button
-              v-if="isViewMode && selectedInvoice?.status !== config.finalStatus"
-              type="button"
-              class="btn btn-primary"
-              @click="switchToEditMode"
-            >
+            <button v-if="isViewMode && selectedInvoice?.status !== config.finalStatus" type="button" class="btn btn-primary" @click="switchToEditMode">
               <i class="bi bi-pencil me-2"></i>{{ config.editLabels.editButton }}
             </button>
           </div>
@@ -321,7 +361,8 @@ const currentItemConversion = ref('')
 const invoiceItemsRef = ref(null)
 const filters = ref({
   search: '',
-  status: ''
+  status: '',
+  paymentStatus: ''
 })
 
 const formData = ref({
@@ -329,6 +370,13 @@ const formData = ref({
   warehouse: '',
   invoice_date: new Date().toISOString().split('T')[0],
   status: 'pending',
+  sub_total: 0.00,
+  tax: 0.00,
+  discount: 0.00,
+  delivery_charge: 0.00,
+  grand_total: 0.00,
+  paid_amount: 0.00,
+  payment_status: 'unpaid',
   notes: '',
   items: []
 })
@@ -365,6 +413,9 @@ const fetchInvoices = async () => {
   }
   if (filters.value.status) {
     params.status = filters.value.status
+  }
+  if (filters.value.paymentStatus) {
+    params.payment_status = filters.value.paymentStatus
   }
   
   await invoiceStore[config.fetchMethod](params)
@@ -445,9 +496,19 @@ const handleEdit = async (invoice) => {
     warehouse: fullInvoice.warehouse,
     invoice_date: fullInvoice.invoice_date,
     status: fullInvoice.status,
+    sub_total: parseFloat(fullInvoice.sub_total) || 0.00,
+    tax: parseFloat(fullInvoice.tax) || 0.00,
+    discount: parseFloat(fullInvoice.discount) || 0.00,
+    delivery_charge: parseFloat(fullInvoice.delivery_charge) || 0.00,
+    grand_total: parseFloat(fullInvoice.grand_total) || 0.00,
+    paid_amount: parseFloat(fullInvoice.paid_amount) || 0.00,
+    payment_status: fullInvoice.payment_status || 'unpaid',
     notes: fullInvoice.notes || '',
     items: fullInvoice.items || []
   }
+  
+  // Recalculate totals from items if needed
+  calculateGrandTotal()
 
   showModal()
 }
@@ -490,9 +551,19 @@ const switchToEditMode = () => {
     warehouse: selectedInvoice.value.warehouse,
     invoice_date: selectedInvoice.value.invoice_date,
     status: selectedInvoice.value.status,
+    sub_total: parseFloat(selectedInvoice.value.sub_total) || 0.00,
+    tax: parseFloat(selectedInvoice.value.tax) || 0.00,
+    discount: parseFloat(selectedInvoice.value.discount) || 0.00,
+    delivery_charge: parseFloat(selectedInvoice.value.delivery_charge) || 0.00,
+    grand_total: parseFloat(selectedInvoice.value.grand_total) || 0.00,
+    paid_amount: parseFloat(selectedInvoice.value.paid_amount) || 0.00,
+    payment_status: selectedInvoice.value.payment_status || 'unpaid',
     notes: selectedInvoice.value.notes || '',
     items: selectedInvoice.value.items || []
   }
+  
+  // Recalculate totals from items if needed
+  calculateGrandTotal()
 }
 
 const handleSave = async () => {
@@ -616,6 +687,54 @@ const getUnitNameFromItem = (item) => {
   return getUnitName(item.unit)
 }
 
+const getPaymentStatusClass = (paymentStatus) => {
+  if (!paymentStatus) return 'bg-secondary'
+  const status = paymentStatus.toLowerCase()
+  const classes = {
+    unpaid: 'bg-danger',
+    partial: 'bg-warning',
+    paid: 'bg-success',
+    overpaid: 'bg-info'
+  }
+  return classes[status] || 'bg-secondary'
+}
+
+const calculateGrandTotal = () => {
+  // Calculate sub_total from items
+  const subTotal = formData.value.items.reduce((sum, item) => {
+    return sum + (parseFloat(item.line_total) || 0)
+  }, 0)
+  
+  formData.value.sub_total = parseFloat(subTotal.toFixed(2))
+  
+  // Calculate grand_total = sub_total + tax + delivery_charge - discount
+  const tax = parseFloat(formData.value.tax) || 0
+  const deliveryCharge = parseFloat(formData.value.delivery_charge) || 0
+  const discount = parseFloat(formData.value.discount) || 0
+  
+  formData.value.grand_total = parseFloat((subTotal + tax + deliveryCharge - discount).toFixed(2))
+  
+  // Auto-update payment status
+  updatePaymentStatus()
+}
+
+const updatePaymentStatus = () => {
+  const paidAmount = parseFloat(formData.value.paid_amount) || 0
+  const grandTotal = parseFloat(formData.value.grand_total) || 0
+  
+  if (paidAmount <= 0) {
+    formData.value.payment_status = 'unpaid'
+  } else if (paidAmount >= grandTotal) {
+    if (paidAmount > grandTotal) {
+      formData.value.payment_status = 'overpaid'
+    } else {
+      formData.value.payment_status = 'paid'
+    }
+  } else {
+    formData.value.payment_status = 'partial'
+  }
+}
+
 const addItem = (item) => {
   formData.value.items.push({ ...item })
   if (item.unit_name && item.unit) {
@@ -623,6 +742,7 @@ const addItem = (item) => {
   }
   availableUnits.value = []
   currentItemConversion.value = ''
+  calculateGrandTotal()
 }
 
 const updateItem = (index, item) => {
@@ -633,11 +753,13 @@ const updateItem = (index, item) => {
     }
     availableUnits.value = []
     currentItemConversion.value = ''
+    calculateGrandTotal()
   }
 }
 
 const removeItem = (index) => {
   formData.value.items.splice(index, 1)
+  calculateGrandTotal()
 }
 
 const resetForm = () => {
@@ -646,6 +768,13 @@ const resetForm = () => {
     warehouse: '',
     invoice_date: new Date().toISOString().split('T')[0],
     status: 'pending',
+    sub_total: 0.00,
+    tax: 0.00,
+    discount: 0.00,
+    delivery_charge: 0.00,
+    grand_total: 0.00,
+    paid_amount: 0.00,
+    payment_status: 'unpaid',
     notes: '',
     items: []
   }

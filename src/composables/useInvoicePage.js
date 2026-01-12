@@ -32,6 +32,7 @@ export function useInvoicePage(type) {
       pdfEndpoint: (id) => `/purchases/${id}/pdf/`,
       pdfFileName: (invoice) => `purchase_invoice_${invoice.invoice_number || invoice.id}.pdf`,
       statusOptions: ['pending', 'completed', 'cancelled'],
+      paymentStatusOptions: ['unpaid', 'partial', 'paid', 'overpaid'],
       finalStatus: 'completed',
       finalStatusMessage: 'Cannot edit a completed purchase',
       viewLabels: {
@@ -68,6 +69,7 @@ export function useInvoicePage(type) {
       pdfEndpoint: (id) => `/sales/${id}/pdf/`,
       pdfFileName: (invoice) => `invoice_${invoice.invoice_number || invoice.id}.pdf`,
       statusOptions: ['pending', 'delivered', 'cancelled'],
+      paymentStatusOptions: ['unpaid', 'partial', 'paid', 'overpaid'],
       finalStatus: 'delivered',
       finalStatusMessage: 'Cannot edit a delivered sale',
       viewLabels: {
@@ -105,6 +107,7 @@ export function useInvoicePage(type) {
       pdfEndpoint: (id) => `/purchases/returns/${id}/pdf/`,
       pdfFileName: (invoice) => `purchase_return_${invoice.invoice_number || invoice.id}.pdf`,
       statusOptions: ['pending', 'completed', 'cancelled'],
+      paymentStatusOptions: ['unpaid', 'partial', 'paid', 'overpaid'],
       finalStatus: 'completed',
       finalStatusMessage: 'Cannot edit a completed purchase return',
       viewLabels: {
@@ -141,6 +144,7 @@ export function useInvoicePage(type) {
       pdfEndpoint: (id) => `/sales/returns/${id}/pdf/`,
       pdfFileName: (invoice) => `sale_return_${invoice.invoice_number || invoice.id}.pdf`,
       statusOptions: ['pending', 'delivered', 'cancelled'],
+      paymentStatusOptions: ['unpaid', 'partial', 'paid', 'overpaid'],
       finalStatus: 'delivered',
       finalStatusMessage: 'Cannot edit a delivered sale return',
       viewLabels: {
@@ -183,6 +187,7 @@ export function useInvoicePage(type) {
     { key: 'warehouse', label: 'Warehouse' },
     { key: 'invoice_date', label: 'Date', width: '120px' },
     { key: 'status', label: 'Status', width: '100px' },
+    { key: 'payment_status', label: 'Payment', width: '100px' },
     { key: 'grand_total', label: 'Grand Total', width: '120px' },
     { key: 'actions', label: 'Actions', width: '180px' }
   ])

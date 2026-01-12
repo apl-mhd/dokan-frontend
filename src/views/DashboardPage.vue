@@ -48,9 +48,11 @@
         <div class="col-md-3">
           <div class="card text-white bg-warning shadow-sm">
             <div class="card-body">
-              <h6 class="card-subtitle mb-2 text-dark-50">Pending Customer Dues</h6>
+              <h6 class="card-subtitle mb-2 text-dark-50">
+                <i class="bi bi-currency-dollar me-1"></i>Customer Dues
+              </h6>
               <h2 class="card-title mb-0 text-dark">{{ formatCurrency(stats.sales.pending_dues) }}</h2>
-              <small class="text-dark">Outstanding payments</small>
+              <small class="text-dark">Outstanding payments from customers</small>
             </div>
           </div>
         </div>
@@ -70,10 +72,30 @@
       <div class="row mb-4">
         <div class="col-md-12">
           <div class="card shadow-sm">
-            <div class="card-header bg-light">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
               <h5 class="mb-0">
-                <i class="bi bi-graph-up me-2"></i>Sales Trend (Last 7 Days)
+                <i class="bi bi-graph-up me-2"></i>Sales Trend
               </h5>
+              <ul class="nav nav-tabs card-header-tabs">
+                <li class="nav-item">
+                  <button
+                    class="nav-link"
+                    :class="{ active: salesPeriod === 'weekly' }"
+                    @click="updateSalesPeriod('weekly')"
+                  >
+                    Weekly
+                  </button>
+                </li>
+                <li class="nav-item">
+                  <button
+                    class="nav-link"
+                    :class="{ active: salesPeriod === 'monthly' }"
+                    @click="updateSalesPeriod('monthly')"
+                  >
+                    Monthly
+                  </button>
+                </li>
+              </ul>
             </div>
             <div class="card-body">
               <Line :data="salesChartData" :options="chartOptions" />
@@ -115,9 +137,11 @@
         <div class="col-md-3">
           <div class="card text-white bg-danger shadow-sm">
             <div class="card-body">
-              <h6 class="card-subtitle mb-2 text-white-50">Supplier Outstanding</h6>
+              <h6 class="card-subtitle mb-2 text-white-50">
+                <i class="bi bi-currency-dollar me-1"></i>Supplier Dues
+              </h6>
               <h2 class="card-title mb-0">{{ formatCurrency(stats.purchases.supplier_outstanding) }}</h2>
-              <small>Pending payments</small>
+              <small>Outstanding payments to suppliers</small>
             </div>
           </div>
         </div>
@@ -137,13 +161,98 @@
       <div class="row mb-4">
         <div class="col-md-12">
           <div class="card shadow-sm">
-            <div class="card-header bg-light">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
               <h5 class="mb-0">
-                <i class="bi bi-graph-down me-2"></i>Purchase Trend (Last 7 Days)
+                <i class="bi bi-graph-down me-2"></i>Purchase Trend
               </h5>
+              <ul class="nav nav-tabs card-header-tabs">
+                <li class="nav-item">
+                  <button
+                    class="nav-link"
+                    :class="{ active: purchasePeriod === 'weekly' }"
+                    @click="updatePurchasePeriod('weekly')"
+                  >
+                    Weekly
+                  </button>
+                </li>
+                <li class="nav-item">
+                  <button
+                    class="nav-link"
+                    :class="{ active: purchasePeriod === 'monthly' }"
+                    @click="updatePurchasePeriod('monthly')"
+                  >
+                    Monthly
+                  </button>
+                </li>
+              </ul>
             </div>
             <div class="card-body">
               <Line :data="purchaseChartData" :options="chartOptions" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dues Overview Charts -->
+      <div class="row mb-4">
+        <div class="col-md-12">
+          <div class="card shadow-sm">
+            <div class="card-header bg-light">
+              <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button
+                    class="nav-link"
+                    :class="{ active: duesTab === 'sales' }"
+                    @click="switchDuesTab('sales')"
+                    type="button"
+                  >
+                    <i class="bi bi-cash-coin me-2"></i>Sales Dues
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button
+                    class="nav-link"
+                    :class="{ active: duesTab === 'purchases' }"
+                    @click="switchDuesTab('purchases')"
+                    type="button"
+                  >
+                    <i class="bi bi-bag-plus me-2"></i>Purchase Dues
+                  </button>
+                </li>
+              </ul>
+            </div>
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">
+                  <span v-if="duesTab === 'sales'">
+                    <i class="bi bi-graph-up me-2 text-warning"></i>Customer Dues Trend
+                  </span>
+                  <span v-else>
+                    <i class="bi bi-graph-down me-2 text-danger"></i>Supplier Dues Trend
+                  </span>
+                </h5>
+                <ul class="nav nav-pills">
+                  <li class="nav-item">
+                    <button
+                      class="btn btn-sm"
+                      :class="duesPeriod === 'weekly' ? 'btn-primary' : 'btn-outline-primary'"
+                      @click="updateDuesPeriod('weekly')"
+                    >
+                      Weekly
+                    </button>
+                  </li>
+                  <li class="nav-item ms-2">
+                    <button
+                      class="btn btn-sm"
+                      :class="duesPeriod === 'monthly' ? 'btn-primary' : 'btn-outline-primary'"
+                      @click="updateDuesPeriod('monthly')"
+                    >
+                      Monthly
+                    </button>
+                  </li>
+                </ul>
+              </div>
+              <Line :data="duesChartData" :options="duesChartOptions" />
             </div>
           </div>
         </div>
@@ -286,54 +395,117 @@ const { formatCurrency } = useFormatter()
 // State
 const loading = ref(false)
 const error = ref(null)
+const salesPeriod = ref('weekly')
+const purchasePeriod = ref('weekly')
+const duesTab = ref('sales')
+const duesPeriod = ref('weekly')
 const stats = ref({
   sales: {
     today: { total: 0, count: 0 },
     month: { total: 0, count: 0 },
     pending_dues: 0,
-    trend: []
+    trend: [],
+    due_trend: []
   },
   purchases: {
     today: { total: 0, count: 0 },
     month: { total: 0, count: 0 },
     supplier_outstanding: 0,
-    trend: []
+    trend: [],
+    due_trend: []
   },
   low_stock: []
 })
 
 // Chart Data
-const salesChartData = computed(() => ({
-  labels: stats.value.sales.trend.map(item => {
-    const date = new Date(item.date)
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  }),
-  datasets: [
-    {
-      label: 'Sales (৳)',
-      backgroundColor: 'rgba(25, 135, 84, 0.2)',
-      borderColor: 'rgba(25, 135, 84, 1)',
-      data: stats.value.sales.trend.map(item => item.amount),
-      tension: 0.4
-    }
-  ]
-}))
+const salesChartData = computed(() => {
+  const trend = stats.value.sales.trend || []
+  return {
+    labels: trend.map(item => {
+      const date = new Date(item.date)
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }),
+    datasets: [
+      {
+        label: 'Sales (৳)',
+        backgroundColor: 'rgba(25, 135, 84, 0.2)',
+        borderColor: 'rgba(25, 135, 84, 1)',
+        data: trend.map(item => item.amount),
+        tension: 0.4
+      }
+    ]
+  }
+})
 
-const purchaseChartData = computed(() => ({
-  labels: stats.value.purchases.trend.map(item => {
-    const date = new Date(item.date)
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  }),
-  datasets: [
-    {
-      label: 'Purchases (৳)',
-      backgroundColor: 'rgba(13, 110, 253, 0.2)',
-      borderColor: 'rgba(13, 110, 253, 1)',
-      data: stats.value.purchases.trend.map(item => item.amount),
-      tension: 0.4
+const purchaseChartData = computed(() => {
+  const trend = stats.value.purchases.trend || []
+  return {
+    labels: trend.map(item => {
+      const date = new Date(item.date)
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }),
+    datasets: [
+      {
+        label: 'Purchases (৳)',
+        backgroundColor: 'rgba(13, 110, 253, 0.2)',
+        borderColor: 'rgba(13, 110, 253, 1)',
+        data: trend.map(item => item.amount),
+        tension: 0.4
+      }
+    ]
+  }
+})
+
+const duesChartData = computed(() => {
+  const trend = duesTab.value === 'sales' 
+    ? (stats.value.sales.due_trend || [])
+    : (stats.value.purchases.due_trend || [])
+  
+  return {
+    labels: trend.map(item => {
+      const date = new Date(item.date)
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }),
+    datasets: [
+      {
+        label: duesTab.value === 'sales' ? 'Customer Dues (৳)' : 'Supplier Dues (৳)',
+        backgroundColor: duesTab.value === 'sales' 
+          ? 'rgba(255, 193, 7, 0.2)'
+          : 'rgba(220, 53, 69, 0.2)',
+        borderColor: duesTab.value === 'sales'
+          ? 'rgba(255, 193, 7, 1)'
+          : 'rgba(220, 53, 69, 1)',
+        data: trend.map(item => item.amount),
+        tension: 0.4
+      }
+    ]
+  }
+})
+
+const duesChartOptions = {
+  responsive: true,
+  maintainAspectRatio: true,
+  plugins: {
+    legend: {
+      display: true,
+      position: 'top'
+    },
+    tooltip: {
+      mode: 'index',
+      intersect: false
     }
-  ]
-}))
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      ticks: {
+        callback: function(value) {
+          return '৳' + value.toLocaleString()
+        }
+      }
+    }
+  }
+}
 
 const chartOptions = {
   responsive: true,
@@ -361,11 +533,20 @@ const chartOptions = {
 }
 
 // Methods
-const fetchDashboardStats = async () => {
+const fetchDashboardStats = async (periodOverride = null) => {
   loading.value = true
   error.value = null
   try {
-    const response = await api.get('/dashboard/stats/')
+    // Use override period if provided, otherwise use the most common period
+    let period = periodOverride || 'weekly'
+    if (!periodOverride) {
+      // If any chart is set to monthly, fetch monthly data
+      if (salesPeriod.value === 'monthly' || purchasePeriod.value === 'monthly' || duesPeriod.value === 'monthly') {
+        period = 'monthly'
+      }
+    }
+    
+    const response = await api.get('/dashboard/stats/', { params: { period } })
     stats.value = response.data.data
   } catch (err) {
     error.value = err.response?.data?.message || 'Failed to fetch dashboard statistics'
@@ -373,6 +554,32 @@ const fetchDashboardStats = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const updateSalesPeriod = (period) => {
+  salesPeriod.value = period
+  purchasePeriod.value = period // Sync all charts to same period
+  duesPeriod.value = period
+  fetchDashboardStats(period)
+}
+
+const updatePurchasePeriod = (period) => {
+  salesPeriod.value = period // Sync all charts to same period
+  purchasePeriod.value = period
+  duesPeriod.value = period
+  fetchDashboardStats(period)
+}
+
+const updateDuesPeriod = (period) => {
+  salesPeriod.value = period // Sync all charts to same period
+  purchasePeriod.value = period
+  duesPeriod.value = period
+  fetchDashboardStats(period)
+}
+
+const switchDuesTab = (tab) => {
+  duesTab.value = tab
+  // No need to refetch, just switch the tab
 }
 
 const refreshDashboard = async () => {
