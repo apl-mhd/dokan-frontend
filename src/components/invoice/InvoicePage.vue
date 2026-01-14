@@ -197,22 +197,12 @@
               <div class="row mb-4">
                 <div class="col-md-3">
                   <label class="form-label">{{ config.entityLabel }} <span class="text-danger">*</span></label>
-                  <select v-model="formData[config.entityField]" class="form-select" required>
-                    <option value="">Select {{ config.entityLabel }}</option>
-                    <option v-for="entity in entityStore[getEntityListName()]" :key="entity.id" :value="entity.id">
-                      {{ entity.name }}
-                    </option>
-                  </select>
+                  <VueSelect v-model="formData[config.entityField]" :options="entityStore[getEntityListName()]" label="name" :reduce="entity => entity.id" :placeholder="`Select ${config.entityLabel}`" />
                 </div>
 
                 <div class="col-md-3">
                   <label class="form-label">Warehouse <span class="text-danger">*</span></label>
-                  <select v-model="formData.warehouse" class="form-select" required>
-                    <option value="">Select Warehouse</option>
-                    <option v-for="warehouse in warehouseStore.warehouses" :key="warehouse.id" :value="warehouse.id">
-                      {{ warehouse.name }}
-                    </option>
-                  </select>
+                  <VueSelect v-model="formData.warehouse" :options="warehouseStore.warehouses" label="name" :reduce="warehouse => warehouse.id" placeholder="Select Warehouse" />
                 </div>
 
                 <div class="col-md-3">
@@ -222,11 +212,7 @@
 
                 <div class="col-md-3">
                   <label class="form-label">Status</label>
-                  <select v-model="formData.status" class="form-select">
-                    <option v-for="status in config.statusOptions" :key="status" :value="status">
-                      {{ status.charAt(0).toUpperCase() + status.slice(1) }}
-                    </option>
-                  </select>
+                  <VueSelect v-model="formData.status" :options="config.statusOptions" placeholder="Select Status" />
                 </div>
               </div>
 
@@ -268,11 +254,7 @@
                     </div>
                     <div class="col-md-6">
                       <label class="form-label">Payment Status</label>
-                      <select v-model="formData.payment_status" class="form-select">
-                        <option v-for="status in config.paymentStatusOptions" :key="status" :value="status">
-                          {{ status.charAt(0).toUpperCase() + status.slice(1) }}
-                        </option>
-                      </select>
+                      <VueSelect v-model="formData.payment_status" :options="config.paymentStatusOptions" placeholder="Select Payment Status" />
                     </div>
                   </div>
                   <div class="row">
@@ -331,6 +313,8 @@ import DataTable from '../common/DataTable.vue'
 import DataTableFilters from '../common/DataTableFilters.vue'
 import LabelPrinter from '../common/LabelPrinter.vue'
 import InvoiceItemsTable from '../common/InvoiceItemsTable.vue'
+import VueSelect from 'vue-select'
+import 'vue-select/dist/vue-select.css'
 
 // Props
 const props = defineProps({
@@ -788,5 +772,3 @@ const resetForm = () => {
   }
 }
 </script>
-
-

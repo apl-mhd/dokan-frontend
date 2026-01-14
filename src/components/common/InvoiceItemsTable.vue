@@ -10,34 +10,17 @@
         <div class="row align-items-end">
           <div class="col-md-3">
             <label class="form-label">Product</label>
-            <select v-model="currentItem.product" class="form-select" @change="$emit('product-change', currentItem.product)">
-              <option value="">Select Product</option>
-              <option v-for="product in products" :key="product.id" :value="product.id">
-                {{ product.name }}
-              </option>
-            </select>
+            <VueSelect v-model="currentItem.product" :options="products" label="name" :reduce="product => product.id" placeholder="Select Product" @update:model-value="handleProductChange" />
           </div>
 
           <div class="col-md-2">
             <label class="form-label">Unit</label>
-            <select v-model="currentItem.unit" class="form-select" @change="$emit('unit-change')">
-              <option value="">Select Unit</option>
-              <option v-for="unit in availableUnits" :key="unit.id" :value="unit.id">
-                {{ unit.name }}
-                {{ unit.is_base_unit ? '(Base)' : '' }}
-              </option>
-            </select>
+            <VueSelect v-model="currentItem.unit" :options="unitOptions" label="label" :reduce="unit => unit.id" placeholder="Select Unit" @update:model-value="$emit('unit-change')" />
           </div>
 
           <div class="col-md-2">
             <label class="form-label">Quantity</label>
-            <input
-              v-model.number="currentItem.quantity"
-              type="number"
-              step="0.01"
-              class="form-control"
-              @input="calculateLineTotal"
-            />
+            <input v-model.number="currentItem.quantity" type="number" step="0.01" class="form-control" @input="calculateLineTotal" />
             <small v-if="$slots.unitConversion" class="text-muted">
               <slot name="unitConversion"></slot>
             </small>
@@ -45,13 +28,7 @@
 
           <div class="col-md-2">
             <label class="form-label">Unit Price</label>
-            <input
-              v-model.number="currentItem.unit_price"
-              type="number"
-              step="0.01"
-              class="form-control"
-              @input="calculateLineTotal"
-            />
+            <input v-model.number="currentItem.unit_price" type="number" step="0.01" class="form-control" @input="calculateLineTotal" />
           </div>
 
           <div class="col-md-2">
@@ -114,22 +91,10 @@
             <td><strong>{{ formatCurrency(item.line_total || (item.quantity * item.unit_price)) }}</strong></td>
             <td>
               <div class="btn-group" role="group">
-                <button 
-                  type="button" 
-                  class="btn btn-sm btn-primary" 
-                  @click="handleEditItem(index)"
-                  :disabled="editingIndex !== null && editingIndex !== index"
-                  title="Edit"
-                >
+                <button type="button" class="btn btn-sm btn-primary" @click="handleEditItem(index)" :disabled="editingIndex !== null && editingIndex !== index" title="Edit">
                   <i class="bi bi-pencil"></i>
                 </button>
-                <button 
-                  type="button" 
-                  class="btn btn-sm btn-danger" 
-                  @click="$emit('remove-item', index)"
-                  :disabled="editingIndex !== null"
-                  title="Delete"
-                >
+                <button type="button" class="btn btn-sm btn-danger" @click="$emit('remove-item', index)" :disabled="editingIndex !== null" title="Delete">
                   <i class="bi bi-trash"></i>
                 </button>
               </div>
@@ -159,6 +124,8 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useFormatter } from '../../composables/useFormatter'
+import VueSelect from 'vue-select'
+import 'vue-select/dist/vue-select.css'
 
 const props = defineProps({
   items: {
@@ -209,6 +176,17 @@ const grandTotal = computed(() => {
     return sum + parseFloat(item.line_total || (item.quantity * item.unit_price))
   }, 0)
 })
+
+const unitOptions = computed(() => {
+  return props.availableUnits.map(unit => ({
+    id: unit.id,
+    label: unit.name + (unit.is_base_unit ? ' (Base)' : '')
+  }))
+})
+
+const handleProductChange = (productId) => {
+  emit('product-change', productId)
+}
 
 const calculateLineTotal = () => {
   currentItem.value.line_total = (currentItem.value.quantity * currentItem.value.unit_price).toFixed(2)
