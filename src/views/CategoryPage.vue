@@ -15,56 +15,43 @@
     <!-- Error State -->
     <ErrorAlert :error="categoryStore.error" title="Error" dismissible @dismiss="categoryStore.error = null" />
 
-    <!-- Categories Grid -->
-    <div v-if="!categoryStore.loading && categoryStore.categories.length > 0" class="row g-4">
-      <div v-for="category in categoryStore.categories" :key="category.id" class="col-md-4 col-lg-3">
-        <div class="card h-100 shadow-sm category-card">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-start mb-3">
-              <h5 class="card-title mb-0">
-                <i class="bi bi-tag-fill text-primary me-2"></i>{{ category.name }}
-              </h5>
-              <div class="dropdown">
-                <button class="btn btn-sm btn-link text-muted" type="button" data-bs-toggle="dropdown">
-                  <i class="bi bi-three-dots-vertical"></i>
-                </button>
-                <ul class="dropdown-menu">
-                  <li>
-                    <a class="dropdown-item" href="#" @click.prevent="handleEdit(category)">
-                      <i class="bi bi-pencil me-2"></i>Edit
-                    </a>
-                  </li>
-                  <li><hr class="dropdown-divider"></li>
-                  <li>
-                    <a class="dropdown-item text-danger" href="#" @click.prevent="handleDelete(category)">
-                      <i class="bi bi-trash me-2"></i>Delete
-                    </a>
-                  </li>
-                </ul>
-              </div>
-            </div>
-            <p class="card-text text-muted small">
-              {{ truncate(category.description, 80) || 'No description' }}
-            </p>
-            <div class="mt-3">
-              <span class="badge bg-light text-dark border">
-                <i class="bi bi-box me-1"></i>ID: {{ category.id }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Empty State -->
-    <EmptyState
-      v-if="!categoryStore.loading && categoryStore.categories.length === 0"
-      icon="bi-tags"
-      title="No Categories Found"
-      message="Start by creating your first product category."
-      action-text="Add Category"
-      @action="handleCreate"
-    />
+    <!-- Data Table -->
+    <DataTable
+      v-if="!categoryStore.loading"
+      :columns="columns"
+      :items="categoryStore.categories || []"
+      :pagination="paginationData"
+      empty-message="No categories found. Click 'Add Category' to create one."
+      @page-change="handlePageChange"
+    >
+      <template #filters>
+        <DataTableFilters v-model:search="filters.search" :status-options="[]" :status-label="''" search-placeholder="Search by name or description..." @filter-change="handleFilterChange" />
+      </template>
+      <template #body="{ items }">
+        <tr v-for="category in items" :key="category.id">
+          <td>{{ category.id }}</td>
+          <td><strong>{{ category.name }}</strong></td>
+          <td>{{ truncate(category.description, 80) || 'No description' }}</td>
+          <td>{{ formatDate(category.created_at) }}</td>
+          <td>
+            <button
+              class="btn btn-sm btn-outline-primary me-2"
+              @click="handleEdit(category)"
+              title="Edit"
+            >
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button
+              class="btn btn-sm btn-outline-danger"
+              @click="handleDelete(category)"
+              title="Delete"
+            >
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>
+        </tr>
+      </template>
+    </DataTable>
 
     <!-- Create/Edit Modal -->
     <div class="modal fade" tabindex="-1" aria-hidden="true" ref="modalRef">
@@ -112,41 +99,92 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useCategoryStore } from '../stores/category.store'
 import { useModal } from '../composables/useModal'
 import { useFormatter } from '../composables/useFormatter'
 import { useConfirm } from '../composables/useConfirm'
+import { usePagination } from '../composables/usePagination'
 
 // Components
 import PageHeader from '../components/common/PageHeader.vue'
 import LoadingSpinner from '../components/common/LoadingSpinner.vue'
 import ErrorAlert from '../components/common/ErrorAlert.vue'
-import EmptyState from '../components/common/EmptyState.vue'
+import DataTable from '../components/common/DataTable.vue'
+import DataTableFilters from '../components/common/DataTableFilters.vue'
 
 // Stores
 const categoryStore = useCategoryStore()
 
 // Composables
 const { modalRef, show: showModal, hide: hideModal } = useModal()
-const { truncate } = useFormatter()
+const { formatDate, truncate } = useFormatter()
 const { confirmDelete } = useConfirm()
+const pagination = usePagination(10)
 
 // State
 const isEditing = ref(false)
 const selectedCategory = ref(null)
+const filters = ref({
+  search: ''
+})
 
 const formData = ref({
   name: '',
   description: ''
 })
 
+// Table columns definition
+const columns = [
+  { key: 'id', label: 'ID', width: '80px' },
+  { key: 'name', label: 'Name' },
+  { key: 'description', label: 'Description' },
+  { key: 'created_at', label: 'Created At' },
+  { key: 'actions', label: 'Actions', width: '150px' }
+]
+
+// Computed pagination data for DataTable
+const paginationData = computed(() => ({
+  currentPage: pagination.currentPage.value,
+  totalPages: pagination.totalPages.value,
+  totalItems: pagination.totalItems.value,
+  startIndex: pagination.startIndex.value,
+  endIndex: pagination.endIndex.value,
+  hasNextPage: pagination.hasNextPage.value,
+  hasPrevPage: pagination.hasPrevPage.value
+}))
+
 // Lifecycle
 onMounted(async () => {
-  await categoryStore.fetchCategories()
+  await fetchCategories()
 })
 
 // Methods
+const fetchCategories = async () => {
+  const params = pagination.getParams()
+  
+  // Add search parameter
+  if (filters.value.search) {
+    params.search = filters.value.search
+  }
+  
+  await categoryStore.fetchCategories(params)
+  if (categoryStore.pagination) {
+    pagination.updateFromResponse(categoryStore.pagination)
+  }
+}
+
+const handlePageChange = async (page) => {
+  pagination.goToPage(page)
+  await fetchCategories()
+}
+
+const handleFilterChange = async () => {
+  // Reset to first page when filters change
+  pagination.goToPage(1)
+  await fetchCategories()
+}
+
 const handleCreate = () => {
   isEditing.value = false
   selectedCategory.value = null
@@ -173,6 +211,7 @@ const handleSave = async () => {
     }
     hideModal()
     resetForm()
+    await fetchCategories()
   } catch (error) {
     console.error('Error saving category:', error)
     // Error is handled by store and displayed in ErrorAlert
@@ -184,6 +223,7 @@ const handleDelete = async (category) => {
   if (confirmed) {
     try {
       await categoryStore.deleteCategory(category.id)
+      await fetchCategories()
     } catch (error) {
       console.error('Error deleting category:', error)
       // Error is handled by store and displayed in ErrorAlert
@@ -199,19 +239,3 @@ const resetForm = () => {
 }
 </script>
 
-<style scoped>
-.category-card {
-  transition: transform 0.2s, box-shadow 0.2s;
-  cursor: pointer;
-}
-
-.category-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
-}
-
-.card-title {
-  font-size: 1.1rem;
-  color: #2c3e50;
-}
-</style>

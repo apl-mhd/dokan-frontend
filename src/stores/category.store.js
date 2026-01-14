@@ -8,11 +8,11 @@ export const useCategoryStore = defineStore('category', () => {
   const error = ref(null)
 
   // Fetch all categories
-  const fetchCategories = async () => {
+  const fetchCategories = async (params = {}) => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.get('/products/categories/')
+      const response = await api.get('/products/categories/', { params })
       categories.value = response.data.data || []
     } catch (err) {
       error.value = err.response?.data?.message || 'Failed to fetch categories'
