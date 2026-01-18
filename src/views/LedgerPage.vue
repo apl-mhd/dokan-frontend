@@ -16,14 +16,7 @@
     <ErrorAlert :error="ledgerStore.error" title="Error" dismissible @dismiss="ledgerStore.error = null" />
 
     <!-- Data Table -->
-    <DataTable
-      v-if="!ledgerStore.loading"
-      :columns="columns"
-      :items="ledgerStore.ledgerEntries || []"
-      :pagination="paginationData"
-      empty-message="No ledger entries found."
-      @page-change="handlePageChange"
-    >
+    <DataTable v-if="!ledgerStore.loading" :columns="columns" :items="entriesWithBalance" :pagination="paginationData" empty-message="No ledger entries found." @page-change="handlePageChange">
       <template #filters>
         <div class="row g-3 mb-3">
           <!-- Search Input -->
@@ -32,13 +25,7 @@
               <span class="input-group-text">
                 <i class="bi bi-search"></i>
               </span>
-              <input
-                v-model="filters.search"
-                type="text"
-                class="form-control"
-                placeholder="Search by party, transaction ID, description..."
-                @input="handleFilterChange"
-              />
+              <input v-model="filters.search" type="text" class="form-control" placeholder="Search by party, transaction ID, description..." @input="handleFilterChange" />
               <button v-if="filters.search" class="btn btn-outline-secondary" type="button" @click="clearSearch" title="Clear search">
                 <i class="bi bi-x"></i>
               </button>
@@ -57,24 +44,12 @@
 
           <!-- Date From Filter -->
           <div class="col-md-2">
-            <input
-              v-model="filters.date_from"
-              type="date"
-              class="form-control"
-              placeholder="Date From"
-              @change="handleFilterChange"
-            />
+            <input v-model="filters.date_from" type="date" class="form-control" placeholder="Date From" @change="handleFilterChange" />
           </div>
 
           <!-- Date To Filter -->
           <div class="col-md-2">
-            <input
-              v-model="filters.date_to"
-              type="date"
-              class="form-control"
-              placeholder="Date To"
-              @change="handleFilterChange"
-            />
+            <input v-model="filters.date_to" type="date" class="form-control" placeholder="Date To" @change="handleFilterChange" />
           </div>
 
           <!-- Clear Filters Button -->
@@ -114,8 +89,8 @@
             <span v-else class="text-muted">-</span>
           </td>
           <td class="text-end">
-            <strong :class="(entry.debit - entry.credit) >= 0 ? 'text-success' : 'text-danger'">
-              {{ formatCurrency(entry.debit - entry.credit) }}
+            <strong :class="entry.running_balance >= 0 ? 'text-success' : 'text-danger'">
+              {{ formatCurrency(entry.running_balance) }}
             </strong>
           </td>
         </tr>
@@ -149,6 +124,78 @@ const filters = ref({
   txn_type: '',
   date_from: '',
   date_to: ''
+})
+
+// Calculate running balance for each entry PER PARTY
+// Entries come from backend sorted by date descending (newest first)
+// We need to calculate balance from oldest to newest per party, then reverse for display
+const entriesWithBalance = computed(() => {
+  if (!ledgerStore.ledgerEntries || ledgerStore.ledgerEntries.length === 0) {
+    return []
+  }
+  
+  // Group entries by party (each party has separate running balance)
+  // Use party ID for grouping (most reliable)
+  const entriesByParty = {}
+  ledgerStore.ledgerEntries.forEach(entry => {
+    // Use party_id first (explicit from serializer), then party (foreign key), then party_name
+    const partyKey = entry.party_id ? String(entry.party_id) :
+                     entry.party ? String(entry.party) :
+                     entry.party_name || 'unknown'
+    
+    if (!entriesByParty[partyKey]) {
+      entriesByParty[partyKey] = []
+    }
+    entriesByParty[partyKey].push(entry)
+  })
+  
+  // Process each party's entries separately
+  const allEntriesWithBalance = []
+  
+  Object.values(entriesByParty).forEach(partyEntries => {
+    // Sort entries by date ascending (oldest first) for proper running balance calculation
+    const sortedEntries = [...partyEntries].sort((a, b) => {
+      const dateA = new Date(a.date)
+      const dateB = new Date(b.date)
+      if (dateA.getTime() !== dateB.getTime()) {
+        return dateA - dateB // Sort by date ascending
+      }
+      // If dates are equal, sort by created_at ascending
+      return new Date(a.created_at || 0) - new Date(b.created_at || 0)
+    })
+    
+    // Calculate running balance from oldest to newest FOR THIS PARTY
+    // Check if opening balance entry exists in the ledger entries
+    const hasOpeningBalanceEntry = sortedEntries.some(entry => entry.txn_type === 'opening_balance')
+    
+    // Start with opening balance if no opening balance ledger entry exists
+    // Get opening_balance from first entry (all entries for same party have same opening_balance)
+    const partyOpeningBalance = sortedEntries.length > 0 && sortedEntries[0].party_opening_balance 
+      ? parseFloat(sortedEntries[0].party_opening_balance) 
+      : 0
+    
+    let runningBalance = hasOpeningBalanceEntry ? 0 : (partyOpeningBalance || 0)
+    
+    sortedEntries.forEach(entry => {
+      // Calculate running balance: Previous Balance + Debit - Credit
+      runningBalance = runningBalance + parseFloat(entry.debit || 0) - parseFloat(entry.credit || 0)
+      allEntriesWithBalance.push({
+        ...entry,
+        running_balance: runningBalance
+      })
+    })
+  })
+  
+  // Sort all entries by date descending (newest first) for display
+  return allEntriesWithBalance.sort((a, b) => {
+    const dateA = new Date(a.date)
+    const dateB = new Date(b.date)
+    if (dateB.getTime() !== dateA.getTime()) {
+      return dateB - dateA // Sort by date descending (newest first)
+    }
+    // If dates are equal, sort by created_at descending
+    return new Date(b.created_at || 0) - new Date(a.created_at || 0)
+  })
 })
 
 // Transaction types for filter
