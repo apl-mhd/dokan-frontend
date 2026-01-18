@@ -16,14 +16,7 @@
     <ErrorAlert :error="supplierStore.error" title="Error" dismissible @dismiss="supplierStore.error = null" />
 
     <!-- Data Table -->
-    <DataTable
-      v-if="!supplierStore.loading"
-      :columns="columns"
-      :items="supplierStore.suppliers || []"
-      :pagination="paginationData"
-      empty-message="No suppliers found. Click 'Add Supplier' to create one."
-      @page-change="handlePageChange"
-    >
+    <DataTable v-if="!supplierStore.loading" :columns="columns" :items="supplierStore.suppliers || []" :pagination="paginationData" empty-message="No suppliers found. Click 'Add Supplier' to create one." @page-change="handlePageChange">
       <template #body="{ items }">
         <tr v-for="supplier in items" :key="supplier.id">
           <td>{{ supplier.id }}</td>
@@ -37,18 +30,10 @@
             </span>
           </td>
           <td>
-            <button
-              class="btn btn-sm btn-outline-primary me-2"
-              @click="handleEdit(supplier)"
-              title="Edit"
-            >
+            <button class="btn btn-sm btn-outline-primary me-2" @click="handleEdit(supplier)" title="Edit">
               <i class="bi bi-pencil"></i>
             </button>
-            <button
-              class="btn btn-sm btn-outline-danger"
-              @click="handleDelete(supplier)"
-              title="Delete"
-            >
+            <button class="btn btn-sm btn-outline-danger" @click="handleDelete(supplier)" title="Delete">
               <i class="bi bi-trash"></i>
             </button>
           </td>
@@ -69,35 +54,17 @@
               <div class="row">
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Supplier Name <span class="text-danger">*</span></label>
-                  <input
-                    v-model="formData.name"
-                    type="text"
-                    class="form-control"
-                    placeholder="Enter supplier name"
-                    required
-                    maxlength="255"
-                  />
+                  <input v-model="formData.name" type="text" class="form-control" placeholder="Enter supplier name" required maxlength="255" />
                 </div>
 
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Email</label>
-                  <input
-                    v-model="formData.email"
-                    type="email"
-                    class="form-control"
-                    placeholder="Enter email"
-                  />
+                  <input v-model="formData.email" type="email" class="form-control" placeholder="Enter email" />
                 </div>
 
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Phone</label>
-                  <input
-                    v-model="formData.phone"
-                    type="text"
-                    class="form-control"
-                    placeholder="Enter phone number"
-                    maxlength="20"
-                  />
+                  <input v-model="formData.phone" type="text" class="form-control" placeholder="Enter phone number" maxlength="20" />
                 </div>
 
                 <div class="col-md-6 mb-3">
@@ -108,14 +75,19 @@
                   </select>
                 </div>
 
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Opening Balance</label>
+                  <input v-model.number="formData.opening_balance" type="number" step="0.01" class="form-control" placeholder="0.00" />
+                </div>
+
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Credit Limit</label>
+                  <input v-model.number="formData.credit_limit" type="number" step="0.01" class="form-control" placeholder="0.00" />
+                </div>
+
                 <div class="col-md-12 mb-3">
                   <label class="form-label">Address</label>
-                  <textarea
-                    v-model="formData.address"
-                    class="form-control"
-                    rows="3"
-                    placeholder="Enter supplier address"
-                  ></textarea>
+                  <textarea v-model="formData.address" class="form-control" rows="3" placeholder="Enter supplier address"></textarea>
                 </div>
               </div>
             </form>
@@ -164,7 +136,9 @@ const formData = ref({
   email: '',
   phone: '',
   address: '',
-  is_active: true
+  is_active: true,
+  opening_balance: 0.00,
+  credit_limit: 0.00
 })
 
 // Table columns definition
@@ -222,7 +196,9 @@ const handleEdit = (supplier) => {
     email: supplier.email || '',
     phone: supplier.phone || '',
     address: supplier.address || '',
-    is_active: supplier.is_active
+    is_active: supplier.is_active,
+    opening_balance: supplier.opening_balance || 0.00,
+    credit_limit: supplier.credit_limit || 0.00
   }
   showModal()
 }
@@ -262,7 +238,9 @@ const resetForm = () => {
     email: '',
     phone: '',
     address: '',
-    is_active: true
+    is_active: true,
+    opening_balance: 0.00,
+    credit_limit: 0.00
   }
 }
 </script>

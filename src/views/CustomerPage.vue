@@ -108,6 +108,28 @@
                   </select>
                 </div>
 
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Opening Balance</label>
+                  <input
+                    v-model.number="formData.opening_balance"
+                    type="number"
+                    step="0.01"
+                    class="form-control"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Credit Limit</label>
+                  <input
+                    v-model.number="formData.credit_limit"
+                    type="number"
+                    step="0.01"
+                    class="form-control"
+                    placeholder="0.00"
+                  />
+                </div>
+
                 <div class="col-md-12 mb-3">
                   <label class="form-label">Address</label>
                   <textarea
@@ -164,7 +186,9 @@ const formData = ref({
   email: '',
   phone: '',
   address: '',
-  is_active: true
+  is_active: true,
+  opening_balance: 0.00,
+  credit_limit: 0.00
 })
 
 // Table columns definition
@@ -222,7 +246,9 @@ const handleEdit = (customer) => {
     email: customer.email || '',
     phone: customer.phone || '',
     address: customer.address || '',
-    is_active: customer.is_active
+    is_active: customer.is_active,
+    opening_balance: customer.opening_balance || 0.00,
+    credit_limit: customer.credit_limit || 0.00
   }
   showModal()
 }
@@ -262,7 +288,9 @@ const resetForm = () => {
     email: '',
     phone: '',
     address: '',
-    is_active: true
+    is_active: true,
+    opening_balance: 0.00,
+    credit_limit: 0.00
   }
 }
 </script>
