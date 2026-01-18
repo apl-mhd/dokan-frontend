@@ -180,6 +180,13 @@ const handleLogout = () => {
           </router-link>
         </li>
 
+        <li class="nav-item">
+          <router-link to="/ledger" class="nav-link" :class="{ active: $route.path === '/ledger' }" :title="sidebarOpen ? '' : 'Ledger'">
+            <i class="bi bi-journal-text"></i>
+            <span v-show="sidebarOpen" class="ms-2">Ledger</span>
+          </router-link>
+        </li>
+
       </ul>
     </aside>
 

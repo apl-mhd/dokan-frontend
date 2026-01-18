@@ -14,6 +14,7 @@ import StockPage from '../views/StockPage.vue'
 import SupplierPage from '../views/SupplierPage.vue'
 import CustomerPage from '../views/CustomerPage.vue'
 import WarehousePage from '../views/WarehousePage.vue'
+import LedgerPage from '../views/LedgerPage.vue'
 
 const routes = [
   {
@@ -92,6 +93,12 @@ const routes = [
     path: '/payment',
     name: 'Payment',
     component: PaymentPage,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/ledger',
+    name: 'Ledger',
+    component: LedgerPage,
     meta: { requiresAuth: true }
   },
 ]
