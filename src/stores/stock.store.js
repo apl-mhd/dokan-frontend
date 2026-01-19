@@ -33,7 +33,16 @@ export const useStockStore = defineStore('stock', () => {
       const response = await api.get('/inventory/stocks/', { params })
       
       // Handle paginated response
-      if (response.data.results) {
+      if (response.data.count !== undefined && params.page && params.page_size) {
+        // Paginated response with metadata
+        stocks.value = response.data.data || []
+        pagination.value = {
+          currentPage: response.data.page || params.page || 1,
+          pageSize: response.data.page_size || params.page_size || 10,
+          totalItems: response.data.count || stocks.value.length,
+          totalPages: response.data.total_pages || Math.ceil((response.data.count || stocks.value.length) / (params.page_size || 10))
+        }
+      } else if (response.data.results) {
         stocks.value = response.data.results
         pagination.value = {
           currentPage: params.page || 1,
@@ -66,7 +75,16 @@ export const useStockStore = defineStore('stock', () => {
       const response = await api.get('/inventory/transactions/', { params })
       
       // Handle paginated response
-      if (response.data.results) {
+      if (response.data.count !== undefined && params.page && params.page_size) {
+        // Paginated response with metadata
+        transactions.value = response.data.data || []
+        transactionsPagination.value = {
+          currentPage: response.data.page || params.page || 1,
+          pageSize: response.data.page_size || params.page_size || 10,
+          totalItems: response.data.count || transactions.value.length,
+          totalPages: response.data.total_pages || Math.ceil((response.data.count || transactions.value.length) / (params.page_size || 10))
+        }
+      } else if (response.data.results) {
         transactions.value = response.data.results
         transactionsPagination.value = {
           currentPage: params.page || 1,

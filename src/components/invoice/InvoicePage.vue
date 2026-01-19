@@ -30,7 +30,10 @@
             <td>{{ invoice.warehouse_name || `Warehouse ${invoice.warehouse}` }}</td>
             <td>{{ formatDate(invoice.invoice_date) }}</td>
             <td>
-              <span class="badge" :class="getStatusClass(invoice.status, config.statusClassOptions)">
+              <span v-if="(props.type === 'sale' || props.type === 'sale_return' || props.type === 'purchase' || props.type === 'purchase_return') && invoice.status !== 'cancelled'" class="badge" :class="getStatusClass(invoice.status, config.statusClassOptions)" @click="handleStatusChange(invoice)" title="Click to change status" style="cursor: pointer;">
+                {{ invoice.status }}
+              </span>
+              <span v-else class="badge" :class="getStatusClass(invoice.status, config.statusClassOptions)" :title="invoice.status === 'cancelled' ? 'Cancelled invoices cannot be changed' : ''">
                 {{ invoice.status }}
               </span>
             </td>
@@ -612,6 +615,60 @@
         </div>
       </div>
     </template>
+
+    <!-- Status Change Modal (for sale/sale_return and purchase/purchase_return) -->
+    <div v-if="props.type === 'sale' || props.type === 'sale_return' || props.type === 'purchase' || props.type === 'purchase_return'" class="modal fade" tabindex="-1" aria-hidden="true" ref="statusModalRef">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Change {{ props.type === 'purchase' || props.type === 'purchase_return' ? 'Purchase' : 'Sale' }} Status</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div v-if="statusChangeInvoice">
+              <p class="mb-3">
+                <strong>Invoice:</strong> {{ statusChangeInvoice.invoice_number || `#${statusChangeInvoice.id}` }}<br>
+                <strong>{{ config.entityLabel }}:</strong> {{ statusChangeInvoice[config.entityNameField] || '-' }}<br>
+                <strong>Current Status:</strong>
+                <span class="badge" :class="getStatusClass(statusChangeInvoice.status, config.statusClassOptions)">
+                  {{ statusChangeInvoice.status }}
+                </span>
+              </p>
+              <div class="mb-3">
+                <label class="form-label">New Status <span class="text-danger">*</span></label>
+                <VueSelect v-model="newStatus" :options="availableStatusOptions" placeholder="Select Status" />
+              </div>
+              <div v-if="statusChangeInvoice.status === 'pending' && newStatus === 'delivered'" class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                Changing to "delivered" will update inventory and create ledger entries.
+              </div>
+              <div v-if="statusChangeInvoice.status === 'pending' && newStatus === 'cancelled'" class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                Changing to "cancelled" - no inventory or ledger impact.
+              </div>
+              <div v-if="(statusChangeInvoice.status === 'delivered' || statusChangeInvoice.status === 'completed') && newStatus === 'cancelled'" class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                Changing from "{{ statusChangeInvoice.status }}" to "cancelled" will reverse inventory and ledger entries.
+              </div>
+              <div v-if="statusChangeInvoice.status === 'cancelled' && (newStatus === 'delivered' || newStatus === 'completed')" class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                Changing from "cancelled" to "{{ newStatus }}" will update inventory and create ledger entries.
+              </div>
+              <div v-if="statusChangeInvoice.status === 'pending' && (newStatus === 'delivered' || newStatus === 'completed')" class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                Changing to "{{ newStatus }}" will update inventory and create ledger entries.
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" @click="handleSaveStatusChange" :disabled="!newStatus || newStatus === statusChangeInvoice?.status">
+              <i class="bi bi-check-circle me-2"></i>Update Status
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -624,6 +681,7 @@ import { useFormatter } from '../../composables/useFormatter'
 import { useConfirm } from '../../composables/useConfirm'
 import { usePagination } from '../../composables/usePagination'
 import { formatUnitConversion } from '../../utility/unitConverter'
+import { Modal } from 'bootstrap'
 
 // Components
 import PageHeader from '../common/PageHeader.vue'
@@ -657,6 +715,45 @@ const { modalRef, show: showModal, hide: hideModal } = useModal()
 const { formatDate, formatCurrency, getStatusClass } = useFormatter()
 const { confirmDelete } = useConfirm()
 const pagination = usePagination(10)
+
+// Status change modal
+const statusModalRef = ref(null)
+const statusChangeInvoice = ref(null)
+const newStatus = ref('')
+
+// Computed: Available status options based on current status
+const availableStatusOptions = computed(() => {
+  if (!statusChangeInvoice.value) {
+    return config.statusOptions
+  }
+  
+  const currentStatus = statusChangeInvoice.value.status
+  
+  // Rules for Sale:
+  // - pending → delivered or cancelled: allowed
+  // - delivered → cancelled: allowed
+  // - cancelled → cannot be changed (locked)
+  // - delivered → pending: NOT allowed
+  
+  // Rules for Purchase:
+  // - pending → completed or cancelled: allowed
+  // - completed → cancelled: allowed
+  // - cancelled → cannot be changed (locked)
+  // - completed → pending: NOT allowed
+  
+  if (currentStatus === 'pending') {
+    // For sale: pending, delivered, cancelled
+    // For purchase: pending, completed, cancelled
+    return config.statusOptions
+  } else if (currentStatus === 'delivered' || currentStatus === 'completed') {
+    // delivered (sale) or completed (purchase) → cancelled only
+    return [currentStatus, 'cancelled'] // Cannot go back to pending
+  } else if (currentStatus === 'cancelled') {
+    return ['cancelled'] // Cancelled invoices cannot be changed
+  }
+  
+  return config.statusOptions
+})
 
 // State
 const isViewMode = ref(false)
@@ -1126,6 +1223,80 @@ const resetForm = () => {
     if (invoiceItemsRef.value.cancelEdit) {
       invoiceItemsRef.value.cancelEdit()
     }
+  }
+}
+
+let statusModalInstance = null
+
+const handleStatusChange = (invoice) => {
+  // Prevent status change for cancelled invoices
+  if (invoice.status === 'cancelled') {
+    alert('Cancelled invoices cannot be changed.')
+    return
+  }
+  
+  // Prevent status change for completed purchases (if not changing to cancelled)
+  if ((props.type === 'purchase' || props.type === 'purchase_return') && invoice.status === 'completed') {
+    // Allow opening modal for completed purchases (they can change to cancelled)
+    // The availableStatusOptions will limit options to ['completed', 'cancelled']
+  }
+  
+  statusChangeInvoice.value = invoice
+  newStatus.value = invoice.status
+  // Show modal using Bootstrap
+  if (statusModalRef.value) {
+    if (!statusModalInstance) {
+      statusModalInstance = new Modal(statusModalRef.value)
+    }
+    statusModalInstance.show()
+  }
+}
+
+const handleSaveStatusChange = async () => {
+  if (!statusChangeInvoice.value || !newStatus.value) {
+    return
+  }
+
+  if (newStatus.value === statusChangeInvoice.value.status) {
+    // No change, just close modal
+    statusModalInstance?.hide()
+    return
+  }
+
+  try {
+    // Fetch full invoice details first
+    const fullInvoice = await invoiceStore[config.fetchSingleMethod](statusChangeInvoice.value.id)
+    
+    // Update only the status field
+    const updateData = {
+      id: fullInvoice.id,
+      customer: fullInvoice.customer,
+      warehouse: fullInvoice.warehouse,
+      invoice_date: fullInvoice.invoice_date,
+      status: newStatus.value,
+      items: fullInvoice.items || [],
+      sub_total: fullInvoice.sub_total,
+      tax: fullInvoice.tax,
+      discount: fullInvoice.discount,
+      delivery_charge: fullInvoice.delivery_charge,
+      paid_amount: fullInvoice.paid_amount,
+      notes: fullInvoice.notes || ''
+    }
+
+    await invoiceStore[config.updateMethod](fullInvoice.id, updateData)
+    
+    // Close modal
+    statusModalInstance?.hide()
+    
+    // Reset state
+    statusChangeInvoice.value = null
+    newStatus.value = ''
+    
+    // Refresh list
+    await fetchInvoices()
+  } catch (error) {
+    console.error('Error updating status:', error)
+    alert('Failed to update status. Please try again.')
   }
 }
 </script>

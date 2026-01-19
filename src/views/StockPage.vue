@@ -29,6 +29,46 @@
 
         <!-- Stock Table -->
         <DataTable v-if="!stockStore.loading" :columns="stockColumns" :items="stockStore.stocks || []" :pagination="stockPaginationData" empty-message="No stock data found." @page-change="handleStockPageChange">
+          <template #filters>
+            <div class="row g-3 mb-3">
+              <!-- Search Input -->
+              <div class="col-md-4">
+                <div class="input-group">
+                  <span class="input-group-text">
+                    <i class="bi bi-search"></i>
+                  </span>
+                  <input v-model="stockFilters.search" type="text" class="form-control" placeholder="Search by product, warehouse..." @input="handleStockFilterChange" />
+                  <button v-if="stockFilters.search" class="btn btn-outline-secondary" type="button" @click="clearStockSearch" title="Clear search">
+                    <i class="bi bi-x"></i>
+                  </button>
+                </div>
+              </div>
+              <!-- Warehouse Filter -->
+              <div class="col-md-3">
+                <select v-model="stockFilters.warehouse" class="form-select" @change="handleStockFilterChange">
+                  <option value="">All Warehouses</option>
+                  <option v-for="warehouse in warehouseStore.warehouses" :key="warehouse.id" :value="warehouse.id">
+                    {{ warehouse.name }}
+                  </option>
+                </select>
+              </div>
+              <!-- Stock Level Filter -->
+              <div class="col-md-3">
+                <select v-model="stockFilters.stockLevel" class="form-select" @change="handleStockFilterChange">
+                  <option value="">All Stock Levels</option>
+                  <option value="low">Low (≤10)</option>
+                  <option value="medium">Medium (11-100)</option>
+                  <option value="high">High (>100)</option>
+                </select>
+              </div>
+              <!-- Clear Filters Button -->
+              <div class="col-md-2">
+                <button v-if="hasActiveStockFilters" class="btn btn-outline-secondary w-100" type="button" @click="clearStockFilters">
+                  <i class="bi bi-x-circle me-1"></i>Clear
+                </button>
+              </div>
+            </div>
+          </template>
           <template #body="{ items }">
             <tr v-for="stock in items" :key="stock.id">
               <td>{{ stock.id }}</td>
@@ -56,6 +96,59 @@
 
         <!-- Transactions Table -->
         <DataTable v-if="!stockStore.loadingTransactions" :columns="transactionColumns" :items="stockStore.transactions || []" :pagination="transactionPaginationData" empty-message="No stock transactions found." @page-change="handleTransactionPageChange">
+          <template #filters>
+            <div class="row g-3 mb-3">
+              <!-- Search Input -->
+              <div class="col-md-3">
+                <div class="input-group">
+                  <span class="input-group-text">
+                    <i class="bi bi-search"></i>
+                  </span>
+                  <input v-model="transactionFilters.search" type="text" class="form-control" placeholder="Search by product, warehouse, type..." @input="handleTransactionFilterChange" />
+                  <button v-if="transactionFilters.search" class="btn btn-outline-secondary" type="button" @click="clearTransactionSearch" title="Clear search">
+                    <i class="bi bi-x"></i>
+                  </button>
+                </div>
+              </div>
+              <!-- Transaction Type Filter -->
+              <div class="col-md-2">
+                <select v-model="transactionFilters.transactionType" class="form-select" @change="handleTransactionFilterChange">
+                  <option value="">All Types</option>
+                  <option value="purchase">Purchase</option>
+                  <option value="sale">Sale</option>
+                  <option value="sale_return">Sale Return</option>
+                  <option value="purchase_return">Purchase Return</option>
+                  <option value="transfer_in">Transfer In</option>
+                  <option value="transfer_out">Transfer Out</option>
+                  <option value="adjustment_in">Adjustment In</option>
+                  <option value="adjustment_out">Adjustment Out</option>
+                </select>
+              </div>
+              <!-- Direction Filter -->
+              <div class="col-md-2">
+                <select v-model="transactionFilters.direction" class="form-select" @change="handleTransactionFilterChange">
+                  <option value="">All Directions</option>
+                  <option value="in">In</option>
+                  <option value="out">Out</option>
+                </select>
+              </div>
+              <!-- Warehouse Filter -->
+              <div class="col-md-2">
+                <select v-model="transactionFilters.warehouse" class="form-select" @change="handleTransactionFilterChange">
+                  <option value="">All Warehouses</option>
+                  <option v-for="warehouse in warehouseStore.warehouses" :key="warehouse.id" :value="warehouse.id">
+                    {{ warehouse.name }}
+                  </option>
+                </select>
+              </div>
+              <!-- Clear Filters Button -->
+              <div class="col-md-3">
+                <button v-if="hasActiveTransactionFilters" class="btn btn-outline-secondary w-100" type="button" @click="clearTransactionFilters">
+                  <i class="bi bi-x-circle me-1"></i>Clear
+                </button>
+              </div>
+            </div>
+          </template>
           <template #body="{ items }">
             <tr v-for="transaction in items" :key="transaction.id">
               <td>{{ transaction.id }}</td>
@@ -90,6 +183,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useStockStore } from '../stores/stock.store'
+import { useWarehouseStore } from '../stores/warehouse.store'
 import { useFormatter } from '../composables/useFormatter'
 import { usePagination } from '../composables/usePagination'
 
@@ -101,11 +195,36 @@ import DataTable from '../components/common/DataTable.vue'
 
 // Stores
 const stockStore = useStockStore()
+const warehouseStore = useWarehouseStore()
 
 // Composables
 const { formatDate, formatDateTime, formatNumber, truncate } = useFormatter()
 const stockPagination = usePagination(10)
 const transactionPagination = usePagination(10)
+
+// Filter state
+const stockFilters = ref({
+  search: '',
+  warehouse: '',
+  stockLevel: ''
+})
+
+const transactionFilters = ref({
+  search: '',
+  transactionType: '',
+  direction: '',
+  warehouse: ''
+})
+
+// Computed
+const hasActiveStockFilters = computed(() => {
+  return !!(stockFilters.value.search || stockFilters.value.warehouse || stockFilters.value.stockLevel)
+})
+
+const hasActiveTransactionFilters = computed(() => {
+  return !!(transactionFilters.value.search || transactionFilters.value.transactionType || 
+           transactionFilters.value.direction || transactionFilters.value.warehouse)
+})
 
 // Table columns definition
 const stockColumns = [
@@ -151,6 +270,7 @@ const transactionPaginationData = computed(() => ({
 
 // Lifecycle
 onMounted(async () => {
+  await warehouseStore.fetchWarehouses()
   await Promise.all([
     fetchStocks(),
     fetchTransactions()
@@ -159,14 +279,43 @@ onMounted(async () => {
 
 // Methods
 const fetchStocks = async () => {
-  await stockStore.fetchStocks(stockPagination.getParams())
+  const params = stockPagination.getParams()
+  
+  // Add filter parameters
+  if (stockFilters.value.search) {
+    params.search = stockFilters.value.search
+  }
+  if (stockFilters.value.warehouse) {
+    params.warehouse = stockFilters.value.warehouse
+  }
+  if (stockFilters.value.stockLevel) {
+    params.stock_level = stockFilters.value.stockLevel
+  }
+  
+  await stockStore.fetchStocks(params)
   if (stockStore.pagination) {
     stockPagination.updateFromResponse(stockStore.pagination)
   }
 }
 
 const fetchTransactions = async () => {
-  await stockStore.fetchStockTransactions(transactionPagination.getParams())
+  const params = transactionPagination.getParams()
+  
+  // Add filter parameters
+  if (transactionFilters.value.search) {
+    params.search = transactionFilters.value.search
+  }
+  if (transactionFilters.value.transactionType) {
+    params.transaction_type = transactionFilters.value.transactionType
+  }
+  if (transactionFilters.value.direction) {
+    params.direction = transactionFilters.value.direction
+  }
+  if (transactionFilters.value.warehouse) {
+    params.warehouse = transactionFilters.value.warehouse
+  }
+  
+  await stockStore.fetchStockTransactions(params)
   if (stockStore.transactionsPagination) {
     transactionPagination.updateFromResponse(stockStore.transactionsPagination)
   }
@@ -180,6 +329,47 @@ const handleStockPageChange = async (page) => {
 const handleTransactionPageChange = async (page) => {
   transactionPagination.goToPage(page)
   await fetchTransactions()
+}
+
+const handleStockFilterChange = async () => {
+  // Reset to first page when filters change
+  stockPagination.goToPage(1)
+  await fetchStocks()
+}
+
+const handleTransactionFilterChange = async () => {
+  // Reset to first page when filters change
+  transactionPagination.goToPage(1)
+  await fetchTransactions()
+}
+
+const clearStockSearch = () => {
+  stockFilters.value.search = ''
+  handleStockFilterChange()
+}
+
+const clearStockFilters = () => {
+  stockFilters.value = {
+    search: '',
+    warehouse: '',
+    stockLevel: ''
+  }
+  handleStockFilterChange()
+}
+
+const clearTransactionSearch = () => {
+  transactionFilters.value.search = ''
+  handleTransactionFilterChange()
+}
+
+const clearTransactionFilters = () => {
+  transactionFilters.value = {
+    search: '',
+    transactionType: '',
+    direction: '',
+    warehouse: ''
+  }
+  handleTransactionFilterChange()
 }
 
 const getStockLevelClass = (quantity) => {

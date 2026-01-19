@@ -60,8 +60,8 @@
             <tr v-for="unit in items" :key="unit.id">
               <td>{{ unit.id }}</td>
               <td><strong>{{ unit.name }}</strong></td>
-              <td>{{ unit.short_name || '-' }}</td>
-              <td>{{ unit.category_name || 'Uncategorized' }}</td>
+              <td>{{ unit.conversion_factor || '1.0000' }}</td>
+              <td>{{ unit.unit_category_name || 'Uncategorized' }}</td>
               <td>
                 <span v-if="unit.is_base_unit" class="badge bg-primary">Base Unit</span>
                 <span v-else class="badge bg-secondary">Derived Unit</span>
@@ -164,23 +164,29 @@
               </div>
 
               <div class="mb-3">
-                <label class="form-label">Short Name</label>
-                <input
-                  v-model="unitFormData.short_name"
-                  type="text"
-                  class="form-control"
-                  placeholder="Enter short name (e.g., kg)"
-                />
-              </div>
-
-              <div class="mb-3">
                 <label class="form-label">Unit Category</label>
-                <select v-model="unitFormData.category" class="form-select">
+                <select v-model="unitFormData.unit_category" class="form-select">
                   <option value="">Select Category</option>
                   <option v-for="cat in unitStore.unitCategories" :key="cat.id" :value="cat.id">
                     {{ cat.name }}
                   </option>
                 </select>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Conversion Factor <span class="text-danger">*</span></label>
+                <input
+                  v-model.number="unitFormData.conversion_factor"
+                  type="number"
+                  step="0.0001"
+                  min="0.0001"
+                  class="form-control"
+                  placeholder="Enter conversion factor (e.g., 1.0000 for base unit)"
+                  required
+                />
+                <div class="form-text">
+                  Conversion factor to base unit. Base units must have 1.0000
+                </div>
               </div>
 
               <div class="mb-3">
@@ -190,10 +196,14 @@
                     type="checkbox"
                     class="form-check-input"
                     id="isBaseUnit"
+                    @change="handleBaseUnitChange"
                   />
                   <label class="form-check-label" for="isBaseUnit">
                     Is Base Unit
                   </label>
+                </div>
+                <div class="form-text">
+                  Base units have conversion_factor = 1.0000 and are used as reference for conversions
                 </div>
               </div>
             </form>
@@ -283,8 +293,8 @@ const isEditingUnit = ref(false)
 const selectedUnit = ref(null)
 const unitFormData = ref({
   name: '',
-  short_name: '',
-  category: '',
+  unit_category: '',
+  conversion_factor: 1.0000,
   is_base_unit: false
 })
 
@@ -299,7 +309,7 @@ const categoryFormData = ref({
 const unitColumns = [
   { key: 'id', label: 'ID', width: '80px' },
   { key: 'name', label: 'Name' },
-  { key: 'short_name', label: 'Short Name', width: '120px' },
+  { key: 'conversion_factor', label: 'Conversion Factor', width: '150px' },
   { key: 'category', label: 'Category' },
   { key: 'type', label: 'Type', width: '120px' },
   { key: 'actions', label: 'Actions', width: '150px' }
@@ -333,8 +343,8 @@ const handleEditUnit = (unit) => {
   selectedUnit.value = unit
   unitFormData.value = {
     name: unit.name,
-    short_name: unit.short_name || '',
-    category: unit.category || '',
+    unit_category: unit.unit_category || '',
+    conversion_factor: parseFloat(unit.conversion_factor) || 1.0000,
     is_base_unit: unit.is_base_unit || false
   }
   showUnitModal()
@@ -342,15 +352,30 @@ const handleEditUnit = (unit) => {
 
 const handleSaveUnit = async () => {
   try {
-    if (isEditingUnit.value) {
-      await unitStore.updateUnit(selectedUnit.value.id, unitFormData.value)
+    // Prepare payload - convert empty strings to null for unit_category
+    const payload = {
+      name: unitFormData.value.name,
+      conversion_factor: parseFloat(unitFormData.value.conversion_factor) || 1.0000,
+      is_base_unit: unitFormData.value.is_base_unit || false
+    }
+    
+    // Only include unit_category if it has a value
+    if (unitFormData.value.unit_category) {
+      payload.unit_category = parseInt(unitFormData.value.unit_category)
     } else {
-      await unitStore.createUnit(unitFormData.value)
+      payload.unit_category = null
+    }
+    
+    if (isEditingUnit.value) {
+      await unitStore.updateUnit(selectedUnit.value.id, payload)
+    } else {
+      await unitStore.createUnit(payload)
     }
     hideUnitModal()
     resetUnitForm()
   } catch (error) {
     console.error('Error saving unit:', error)
+    alert(error.response?.data?.message || error.message || 'Failed to save unit. Please check the form data.')
   }
 }
 
@@ -368,9 +393,16 @@ const handleDeleteUnit = async (unit) => {
 const resetUnitForm = () => {
   unitFormData.value = {
     name: '',
-    short_name: '',
-    category: '',
+    unit_category: '',
+    conversion_factor: 1.0000,
     is_base_unit: false
+  }
+}
+
+const handleBaseUnitChange = () => {
+  // If base unit is checked, set conversion_factor to 1.0000
+  if (unitFormData.value.is_base_unit) {
+    unitFormData.value.conversion_factor = 1.0000
   }
 }
 
