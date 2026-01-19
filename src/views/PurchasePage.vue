@@ -1,5 +1,5 @@
 <template>
-  <InvoicePage type="purchase" />
+  <InvoicePage type="purchase" :full-page="true" />
 </template>
 
 <script setup>
