@@ -4,6 +4,7 @@ import { useAuthStore } from '../stores/authStore'
 import LoginPage from '../views/LoginPage.vue'
 import DashboardPage from '../views/DashboardPage.vue'
 import PurchasePage from '../views/PurchasePage.vue'
+import PurchaseReturnPage from '../views/PurchaseReturnPage.vue'
 import SalePage from '../views/SalePage.vue'
 import SalesManagementPage from '../views/SalesManagementPage.vue'
 import SaleReturnPage from '../views/SaleReturnPage.vue'
@@ -35,6 +36,12 @@ const routes = [
     path: '/purchase',
     name: 'Purchase',
     component: PurchasePage,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/purchase-returns',
+    name: 'PurchaseReturns',
+    component: PurchaseReturnPage,
     meta: { requiresAuth: true }
   },
   {

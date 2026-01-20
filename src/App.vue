@@ -104,6 +104,13 @@ const handleLogout = () => {
         </li>
 
         <li class="nav-item">
+          <router-link to="/purchase-returns" class="nav-link" :class="{ active: $route.path === '/purchase-returns' }" :title="sidebarOpen ? '' : 'Purchase Returns'">
+            <i class="bi bi-arrow-return-left"></i>
+            <span v-show="sidebarOpen" class="ms-2">Purchase Returns</span>
+          </router-link>
+        </li>
+
+        <li class="nav-item">
           <router-link to="/sale" class="nav-link" :class="{ active: $route.path === '/sale' }" :title="sidebarOpen ? '' : 'Sale'">
             <i class="bi bi-cash-coin"></i>
             <span v-show="sidebarOpen" class="ms-2">Sale</span>
