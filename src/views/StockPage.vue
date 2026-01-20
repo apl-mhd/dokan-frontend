@@ -153,6 +153,12 @@
             <tr v-for="transaction in items" :key="transaction.id">
               <td>{{ transaction.id }}</td>
               <td>{{ formatDateTime(transaction.created_at) }}</td>
+              <td>
+                <strong>{{ transaction.reference_number || transaction.reference || '-' }}</strong>
+                <span v-if="transaction.reference_type" class="d-block small text-muted">
+                  {{ transaction.reference_type }}
+                </span>
+              </td>
               <td><strong>{{ transaction.product_name || `Product ${transaction.product}` }}</strong></td>
               <td>{{ transaction.warehouse_name || `Warehouse ${transaction.warehouse}` }}</td>
               <td>
@@ -161,8 +167,8 @@
                 </span>
               </td>
               <td>
-                <span :class="transaction.quantity > 0 ? 'text-success' : 'text-danger'">
-                  {{ transaction.quantity > 0 ? '+' : '' }}{{ formatNumber(transaction.quantity) }}
+                <span :class="transaction.direction === 'in' ? 'text-success' : 'text-danger'">
+                  {{ transaction.direction === 'in' ? '+' : '-' }}{{ formatNumber(transaction.quantity) }}
                 </span>
                 <span class="text-muted ms-1">{{ transaction.unit_name || 'N/A' }}</span>
               </td>
@@ -239,6 +245,7 @@ const stockColumns = [
 const transactionColumns = [
   { key: 'id', label: 'ID', width: '80px' },
   { key: 'created_at', label: 'Date/Time', width: '180px' },
+  { key: 'reference', label: 'Reference', width: '160px' },
   { key: 'product', label: 'Product' },
   { key: 'warehouse', label: 'Warehouse' },
   { key: 'type', label: 'Type', width: '120px' },
@@ -382,8 +389,12 @@ const getTransactionTypeClass = (type) => {
   const typeMap = {
     purchase: 'bg-success',
     sale: 'bg-primary',
-    adjustment: 'bg-warning text-dark',
-    transfer: 'bg-info'
+    purchase_return: 'bg-danger',
+    sale_return: 'bg-warning text-dark',
+    transfer_in: 'bg-info',
+    transfer_out: 'bg-info',
+    adjustment_in: 'bg-secondary',
+    adjustment_out: 'bg-secondary'
   }
   return typeMap[type?.toLowerCase()] || 'bg-secondary'
 }

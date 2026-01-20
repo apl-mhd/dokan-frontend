@@ -21,7 +21,15 @@ export const useSupplierStore = defineStore('supplier', () => {
       const response = await api.get('/suppliers/', { params })
       
       // Handle paginated response
-      if (response.data.results) {
+      if (response.data.count !== undefined && params.page && params.page_size) {
+        suppliers.value = response.data.data || []
+        pagination.value = {
+          currentPage: response.data.page || params.page || 1,
+          pageSize: response.data.page_size || params.page_size || 10,
+          totalItems: response.data.count || suppliers.value.length,
+          totalPages: response.data.total_pages || Math.ceil((response.data.count || suppliers.value.length) / (params.page_size || 10))
+        }
+      } else if (response.data.results) {
         suppliers.value = response.data.results
         pagination.value = {
           currentPage: params.page || 1,

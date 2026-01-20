@@ -17,6 +17,37 @@
 
     <!-- Data Table -->
     <DataTable v-if="!supplierStore.loading" :columns="columns" :items="supplierStore.suppliers || []" :pagination="paginationData" empty-message="No suppliers found. Click 'Add Supplier' to create one." @page-change="handlePageChange">
+      <template #filters>
+        <div class="row g-3 mb-3">
+          <div class="col-md-5">
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input
+                v-model="filters.search"
+                type="text"
+                class="form-control"
+                placeholder="Search by name, email, phone..."
+                @input="handleFilterChange"
+              />
+              <button v-if="filters.search" class="btn btn-outline-secondary" type="button" @click="clearSearch" title="Clear search">
+                <i class="bi bi-x"></i>
+              </button>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <select v-model="filters.is_active" class="form-select" @change="handleFilterChange">
+              <option value="">All Status</option>
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <button v-if="hasActiveFilters" class="btn btn-outline-secondary w-100" type="button" @click="clearFilters">
+              <i class="bi bi-x-circle me-1"></i>Clear
+            </button>
+          </div>
+        </div>
+      </template>
       <template #body="{ items }">
         <tr v-for="supplier in items" :key="supplier.id">
           <td>{{ supplier.id }}</td>
@@ -24,6 +55,7 @@
           <td>{{ supplier.email || '-' }}</td>
           <td>{{ supplier.phone || '-' }}</td>
           <td>{{ truncate(supplier.address, 40) }}</td>
+          <td><strong>{{ formatCurrency(supplier.balance || 0) }}</strong></td>
           <td>
             <span class="badge" :class="supplier.is_active ? 'bg-success' : 'bg-secondary'">
               {{ supplier.is_active ? 'Active' : 'Inactive' }}
@@ -123,13 +155,20 @@ const supplierStore = useSupplierStore()
 
 // Composables
 const { modalRef, show: showModal, hide: hideModal } = useModal()
-const { truncate } = useFormatter()
+const { truncate, formatCurrency } = useFormatter()
 const { confirmDelete } = useConfirm()
 const pagination = usePagination(10)
 
 // State
 const isEditing = ref(false)
 const selectedSupplier = ref(null)
+
+const filters = ref({
+  search: '',
+  is_active: ''
+})
+
+const hasActiveFilters = computed(() => !!(filters.value.search || filters.value.is_active))
 
 const formData = ref({
   name: '',
@@ -148,6 +187,7 @@ const columns = [
   { key: 'email', label: 'Email' },
   { key: 'phone', label: 'Phone' },
   { key: 'address', label: 'Address' },
+  { key: 'balance', label: 'Balance', width: '140px' },
   { key: 'status', label: 'Status', width: '100px' },
   { key: 'actions', label: 'Actions', width: '150px' }
 ]
@@ -170,7 +210,10 @@ onMounted(async () => {
 
 // Methods
 const fetchSuppliers = async () => {
-  await supplierStore.fetchSuppliers(pagination.getParams())
+  const params = pagination.getParams()
+  if (filters.value.search) params.search = filters.value.search
+  if (filters.value.is_active !== '') params.is_active = filters.value.is_active
+  await supplierStore.fetchSuppliers(params)
   if (supplierStore.pagination) {
     pagination.updateFromResponse(supplierStore.pagination)
   }
@@ -179,6 +222,21 @@ const fetchSuppliers = async () => {
 const handlePageChange = async (page) => {
   pagination.goToPage(page)
   await fetchSuppliers()
+}
+
+const handleFilterChange = async () => {
+  pagination.goToPage(1)
+  await fetchSuppliers()
+}
+
+const clearSearch = () => {
+  filters.value.search = ''
+  handleFilterChange()
+}
+
+const clearFilters = () => {
+  filters.value = { search: '', is_active: '' }
+  handleFilterChange()
 }
 
 const handleCreate = () => {

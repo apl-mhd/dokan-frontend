@@ -24,6 +24,37 @@
       empty-message="No customers found. Click 'Add Customer' to create one."
       @page-change="handlePageChange"
     >
+      <template #filters>
+        <div class="row g-3 mb-3">
+          <div class="col-md-5">
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input
+                v-model="filters.search"
+                type="text"
+                class="form-control"
+                placeholder="Search by name, email, phone..."
+                @input="handleFilterChange"
+              />
+              <button v-if="filters.search" class="btn btn-outline-secondary" type="button" @click="clearSearch" title="Clear search">
+                <i class="bi bi-x"></i>
+              </button>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <select v-model="filters.is_active" class="form-select" @change="handleFilterChange">
+              <option value="">All Status</option>
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <button v-if="hasActiveFilters" class="btn btn-outline-secondary w-100" type="button" @click="clearFilters">
+              <i class="bi bi-x-circle me-1"></i>Clear
+            </button>
+          </div>
+        </div>
+      </template>
       <template #body="{ items }">
         <tr v-for="customer in items" :key="customer.id">
           <td>{{ customer.id }}</td>
@@ -31,6 +62,7 @@
           <td>{{ customer.email || '-' }}</td>
           <td>{{ customer.phone || '-' }}</td>
           <td>{{ truncate(customer.address, 40) }}</td>
+          <td><strong>{{ formatCurrency(customer.balance || 0) }}</strong></td>
           <td>
             <span class="badge" :class="customer.is_active ? 'bg-success' : 'bg-secondary'">
               {{ customer.is_active ? 'Active' : 'Inactive' }}
@@ -173,13 +205,20 @@ const customerStore = useCustomerStore()
 
 // Composables
 const { modalRef, show: showModal, hide: hideModal } = useModal()
-const { truncate } = useFormatter()
+const { truncate, formatCurrency } = useFormatter()
 const { confirmDelete } = useConfirm()
 const pagination = usePagination(10)
 
 // State
 const isEditing = ref(false)
 const selectedCustomer = ref(null)
+
+const filters = ref({
+  search: '',
+  is_active: ''
+})
+
+const hasActiveFilters = computed(() => !!(filters.value.search || filters.value.is_active))
 
 const formData = ref({
   name: '',
@@ -198,6 +237,7 @@ const columns = [
   { key: 'email', label: 'Email' },
   { key: 'phone', label: 'Phone' },
   { key: 'address', label: 'Address' },
+  { key: 'balance', label: 'Balance', width: '140px' },
   { key: 'status', label: 'Status', width: '100px' },
   { key: 'actions', label: 'Actions', width: '150px' }
 ]
@@ -220,7 +260,10 @@ onMounted(async () => {
 
 // Methods
 const fetchCustomers = async () => {
-  await customerStore.fetchCustomers(pagination.getParams())
+  const params = pagination.getParams()
+  if (filters.value.search) params.search = filters.value.search
+  if (filters.value.is_active !== '') params.is_active = filters.value.is_active
+  await customerStore.fetchCustomers(params)
   if (customerStore.pagination) {
     pagination.updateFromResponse(customerStore.pagination)
   }
@@ -229,6 +272,21 @@ const fetchCustomers = async () => {
 const handlePageChange = async (page) => {
   pagination.goToPage(page)
   await fetchCustomers()
+}
+
+const handleFilterChange = async () => {
+  pagination.goToPage(1)
+  await fetchCustomers()
+}
+
+const clearSearch = () => {
+  filters.value.search = ''
+  handleFilterChange()
+}
+
+const clearFilters = () => {
+  filters.value = { search: '', is_active: '' }
+  handleFilterChange()
 }
 
 const handleCreate = () => {

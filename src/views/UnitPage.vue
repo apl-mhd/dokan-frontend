@@ -54,8 +54,49 @@
           v-if="!unitStore.loading"
           :columns="unitColumns"
           :items="unitStore.units || []"
+          :pagination="unitsPaginationData"
           empty-message="No units found. Click 'Add Unit' to create one."
+          @page-change="handleUnitsPageChange"
         >
+          <template #filters>
+            <div class="row g-3 mb-3">
+              <div class="col-md-5">
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-search"></i></span>
+                  <input
+                    v-model="unitFilters.search"
+                    type="text"
+                    class="form-control"
+                    placeholder="Search by unit or category..."
+                    @input="handleUnitsFilterChange"
+                  />
+                  <button v-if="unitFilters.search" class="btn btn-outline-secondary" type="button" @click="unitFilters.search=''; handleUnitsFilterChange()">
+                    <i class="bi bi-x"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <select v-model="unitFilters.unit_category" class="form-select" @change="handleUnitsFilterChange">
+                  <option value="">All Categories</option>
+                  <option v-for="cat in unitStore.unitCategories" :key="cat.id" :value="cat.id">
+                    {{ cat.name }}
+                  </option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <select v-model="unitFilters.is_base_unit" class="form-select" @change="handleUnitsFilterChange">
+                  <option value="">All Types</option>
+                  <option value="true">Base</option>
+                  <option value="false">Derived</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <button class="btn btn-outline-secondary w-100" type="button" @click="unitFilters = { search: '', unit_category: '', is_base_unit: '' }; handleUnitsFilterChange()">
+                  <i class="bi bi-x-circle me-1"></i>Clear
+                </button>
+              </div>
+            </div>
+          </template>
           <template #body="{ items }">
             <tr v-for="unit in items" :key="unit.id">
               <td>{{ unit.id }}</td>
@@ -113,8 +154,34 @@
           v-if="!unitStore.loadingCategories"
           :columns="categoryColumns"
           :items="unitStore.unitCategories || []"
+          :pagination="categoriesPaginationData"
           empty-message="No unit categories found. Click 'Add Unit Category' to create one."
+          @page-change="handleCategoriesPageChange"
         >
+          <template #filters>
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-search"></i></span>
+                  <input
+                    v-model="categoryFilters.search"
+                    type="text"
+                    class="form-control"
+                    placeholder="Search category..."
+                    @input="handleCategoriesFilterChange"
+                  />
+                  <button v-if="categoryFilters.search" class="btn btn-outline-secondary" type="button" @click="categoryFilters.search=''; handleCategoriesFilterChange()">
+                    <i class="bi bi-x"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="col-md-2">
+                <button class="btn btn-outline-secondary w-100" type="button" @click="categoryFilters = { search: '' }; handleCategoriesFilterChange()">
+                  <i class="bi bi-x-circle me-1"></i>Clear
+                </button>
+              </div>
+            </div>
+          </template>
           <template #body="{ items }">
             <tr v-for="category in items" :key="category.id">
               <td>{{ category.id }}</td>
@@ -263,11 +330,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useUnitStore } from '../stores/unit.store'
 import { useModal } from '../composables/useModal'
 import { useFormatter } from '../composables/useFormatter'
 import { useConfirm } from '../composables/useConfirm'
+import { usePagination } from '../composables/usePagination'
 
 // Components
 import PageHeader from '../components/common/PageHeader.vue'
@@ -281,6 +349,38 @@ const unitStore = useUnitStore()
 // Composables
 const { truncate } = useFormatter()
 const { confirmDelete } = useConfirm()
+const unitsPagination = usePagination(10)
+const categoriesPagination = usePagination(10)
+
+const unitFilters = ref({
+  search: '',
+  unit_category: '',
+  is_base_unit: ''
+})
+
+const categoryFilters = ref({
+  search: ''
+})
+
+const unitsPaginationData = computed(() => ({
+  currentPage: unitsPagination.currentPage.value,
+  totalPages: unitsPagination.totalPages.value,
+  totalItems: unitsPagination.totalItems.value,
+  startIndex: unitsPagination.startIndex.value,
+  endIndex: unitsPagination.endIndex.value,
+  hasNextPage: unitsPagination.hasNextPage.value,
+  hasPrevPage: unitsPagination.hasPrevPage.value
+}))
+
+const categoriesPaginationData = computed(() => ({
+  currentPage: categoriesPagination.currentPage.value,
+  totalPages: categoriesPagination.totalPages.value,
+  totalItems: categoriesPagination.totalItems.value,
+  startIndex: categoriesPagination.startIndex.value,
+  endIndex: categoriesPagination.endIndex.value,
+  hasNextPage: categoriesPagination.hasNextPage.value,
+  hasPrevPage: categoriesPagination.hasPrevPage.value
+}))
 
 // Unit Modal
 const { modalRef: unitModalRef, show: showUnitModal, hide: hideUnitModal } = useModal()
@@ -324,11 +424,48 @@ const categoryColumns = [
 
 // Lifecycle
 onMounted(async () => {
-  await Promise.all([
-    unitStore.fetchUnits(),
-    unitStore.fetchUnitCategories()
-  ])
+  await Promise.all([fetchUnits(), fetchCategories()])
 })
+
+const fetchUnits = async () => {
+  const params = unitsPagination.getParams()
+  if (unitFilters.value.search) params.search = unitFilters.value.search
+  if (unitFilters.value.unit_category) params.unit_category = unitFilters.value.unit_category
+  if (unitFilters.value.is_base_unit !== '') params.is_base_unit = unitFilters.value.is_base_unit
+  await unitStore.fetchUnits(params)
+  if (unitStore.pagination) {
+    unitsPagination.updateFromResponse(unitStore.pagination)
+  }
+}
+
+const fetchCategories = async () => {
+  const params = categoriesPagination.getParams()
+  if (categoryFilters.value.search) params.search = categoryFilters.value.search
+  await unitStore.fetchUnitCategories(params)
+  if (unitStore.categoriesPagination) {
+    categoriesPagination.updateFromResponse(unitStore.categoriesPagination)
+  }
+}
+
+const handleUnitsPageChange = async (page) => {
+  unitsPagination.goToPage(page)
+  await fetchUnits()
+}
+
+const handleCategoriesPageChange = async (page) => {
+  categoriesPagination.goToPage(page)
+  await fetchCategories()
+}
+
+const handleUnitsFilterChange = async () => {
+  unitsPagination.goToPage(1)
+  await fetchUnits()
+}
+
+const handleCategoriesFilterChange = async () => {
+  categoriesPagination.goToPage(1)
+  await fetchCategories()
+}
 
 // Unit Methods
 const handleCreateUnit = () => {
@@ -373,6 +510,7 @@ const handleSaveUnit = async () => {
     }
     hideUnitModal()
     resetUnitForm()
+    await fetchUnits()
   } catch (error) {
     console.error('Error saving unit:', error)
     alert(error.response?.data?.message || error.message || 'Failed to save unit. Please check the form data.')
@@ -384,6 +522,7 @@ const handleDeleteUnit = async (unit) => {
   if (confirmed) {
     try {
       await unitStore.deleteUnit(unit.id)
+      await fetchUnits()
     } catch (error) {
       console.error('Error deleting unit:', error)
     }
@@ -433,6 +572,7 @@ const handleSaveCategory = async () => {
     }
     hideCategoryModal()
     resetCategoryForm()
+    await fetchCategories()
   } catch (error) {
     console.error('Error saving category:', error)
   }
@@ -443,6 +583,7 @@ const handleDeleteCategory = async (category) => {
   if (confirmed) {
     try {
       await unitStore.deleteUnitCategory(category.id)
+      await fetchCategories()
     } catch (error) {
       console.error('Error deleting category:', error)
     }

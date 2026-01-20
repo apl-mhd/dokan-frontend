@@ -5,6 +5,8 @@ import { useAuthStore } from './stores/authStore'
 
 const sidebarOpen = ref(true)
 const productsMenuOpen = ref(false)
+const purchaseMenuOpen = ref(false)
+const contactsMenuOpen = ref(false)
 const isMobile = ref(false)
 const route = useRoute()
 const router = useRouter()
@@ -37,9 +39,27 @@ const toggleProductsMenu = () => {
   productsMenuOpen.value = !productsMenuOpen.value
 }
 
+const togglePurchaseMenu = () => {
+  purchaseMenuOpen.value = !purchaseMenuOpen.value
+}
+
+const toggleContactsMenu = () => {
+  contactsMenuOpen.value = !contactsMenuOpen.value
+}
+
+// Check if current route is in purchase section
+const isPurchaseSection = computed(() => {
+  return ['/purchase', '/purchase-returns'].includes(route.path)
+})
+
 // Check if current route is in products section
 const isProductsSection = computed(() => {
   return ['/products', '/categories', '/units', '/product'].includes(route.path)
+})
+
+// Check if current route is in contacts section
+const isContactsSection = computed(() => {
+  return ['/supplier', '/customer'].includes(route.path)
 })
 
 // Check if current route is login page (no layout needed)
@@ -49,9 +69,31 @@ const isLoginPage = computed(() => {
 
 // Auto-expand products menu when navigating to a product-related page
 watch(() => route.path, (newPath) => {
+  if (['/purchase', '/purchase-returns'].includes(newPath)) {
+    purchaseMenuOpen.value = true
+
+    // On mobile, close sidebar after navigation
+    if (isMobile.value) {
+      setTimeout(() => {
+        sidebarOpen.value = false
+      }, 300)
+    }
+  }
+
   if (['/products', '/categories', '/units', '/product'].includes(newPath)) {
     productsMenuOpen.value = true
     
+    // On mobile, close sidebar after navigation
+    if (isMobile.value) {
+      setTimeout(() => {
+        sidebarOpen.value = false
+      }, 300)
+    }
+  }
+
+  if (['/supplier', '/customer'].includes(newPath)) {
+    contactsMenuOpen.value = true
+
     // On mobile, close sidebar after navigation
     if (isMobile.value) {
       setTimeout(() => {
@@ -96,18 +138,32 @@ const handleLogout = () => {
           </router-link>
         </li>
 
+        <!-- Purchase Parent Menu -->
         <li class="nav-item">
-          <router-link to="/purchase" class="nav-link" :class="{ active: $route.path === '/purchase' }" :title="sidebarOpen ? '' : 'Purchase'">
+          <div class="nav-link parent-menu" :class="{ 'active': isPurchaseSection }" @click="togglePurchaseMenu" :title="sidebarOpen ? '' : 'Purchase'">
             <i class="bi bi-bag-plus"></i>
-            <span v-show="sidebarOpen" class="ms-2">Purchase</span>
-          </router-link>
-        </li>
+            <span v-show="sidebarOpen" class="ms-2 flex-grow-1">Purchase</span>
+            <i v-show="sidebarOpen" class="bi chevron-icon ms-auto" :class="purchaseMenuOpen ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
+          </div>
 
-        <li class="nav-item">
-          <router-link to="/purchase-returns" class="nav-link" :class="{ active: $route.path === '/purchase-returns' }" :title="sidebarOpen ? '' : 'Purchase Returns'">
-            <i class="bi bi-arrow-return-left"></i>
-            <span v-show="sidebarOpen" class="ms-2">Purchase Returns</span>
-          </router-link>
+          <!-- Purchase Submenu -->
+          <div class="submenu-collapse" :class="{ 'show': purchaseMenuOpen && sidebarOpen }">
+            <ul class="nav flex-column submenu">
+              <li class="nav-item">
+                <router-link to="/purchase" class="nav-link submenu-link" :class="{ 'active': $route.path === '/purchase' }">
+                  <i class="bi bi-bag-plus"></i>
+                  <span class="ms-2">Purchases</span>
+                </router-link>
+              </li>
+
+              <li class="nav-item">
+                <router-link to="/purchase-returns" class="nav-link submenu-link" :class="{ 'active': $route.path === '/purchase-returns' }">
+                  <i class="bi bi-arrow-return-left"></i>
+                  <span class="ms-2">Purchase Returns</span>
+                </router-link>
+              </li>
+            </ul>
+          </div>
         </li>
 
         <li class="nav-item">
@@ -159,18 +215,32 @@ const handleLogout = () => {
           </router-link>
         </li>
 
+        <!-- Contacts Parent Menu -->
         <li class="nav-item">
-          <router-link to="/supplier" class="nav-link" :class="{ active: $route.path === '/supplier' }" :title="sidebarOpen ? '' : 'Supplier'">
-            <i class="bi bi-people"></i>
-            <span v-show="sidebarOpen" class="ms-2">Supplier</span>
-          </router-link>
-        </li>
+          <div class="nav-link parent-menu" :class="{ 'active': isContactsSection }" @click="toggleContactsMenu" :title="sidebarOpen ? '' : 'Contacts'">
+            <i class="bi bi-person-lines-fill"></i>
+            <span v-show="sidebarOpen" class="ms-2 flex-grow-1">Contacts</span>
+            <i v-show="sidebarOpen" class="bi chevron-icon ms-auto" :class="contactsMenuOpen ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
+          </div>
 
-        <li class="nav-item">
-          <router-link to="/customer" class="nav-link" :class="{ active: $route.path === '/customer' }" :title="sidebarOpen ? '' : 'Customer'">
-            <i class="bi bi-person-circle"></i>
-            <span v-show="sidebarOpen" class="ms-2">Customer</span>
-          </router-link>
+          <!-- Contacts Submenu -->
+          <div class="submenu-collapse" :class="{ 'show': contactsMenuOpen && sidebarOpen }">
+            <ul class="nav flex-column submenu">
+              <li class="nav-item">
+                <router-link to="/supplier" class="nav-link submenu-link" :class="{ 'active': $route.path === '/supplier' }">
+                  <i class="bi bi-people"></i>
+                  <span class="ms-2">Suppliers</span>
+                </router-link>
+              </li>
+
+              <li class="nav-item">
+                <router-link to="/customer" class="nav-link submenu-link" :class="{ 'active': $route.path === '/customer' }">
+                  <i class="bi bi-person-circle"></i>
+                  <span class="ms-2">Customers</span>
+                </router-link>
+              </li>
+            </ul>
+          </div>
         </li>
 
         <li class="nav-item">
