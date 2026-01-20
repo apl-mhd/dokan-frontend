@@ -5,6 +5,8 @@ import LoginPage from '../views/LoginPage.vue'
 import DashboardPage from '../views/DashboardPage.vue'
 import PurchasePage from '../views/PurchasePage.vue'
 import SalePage from '../views/SalePage.vue'
+import SalesManagementPage from '../views/SalesManagementPage.vue'
+import SaleReturnPage from '../views/SaleReturnPage.vue'
 import PaymentPage from '../views/PaymentPage.vue'
 import ProductPage from '../views/ProductPage.vue'
 import ProductManagementPage from '../views/ProductManagementPage.vue'
@@ -38,7 +40,13 @@ const routes = [
   {
     path: '/sale',
     name: 'Sale',
-    component: SalePage,
+    component: SalesManagementPage,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/sale-returns',
+    name: 'SaleReturns',
+    component: SaleReturnPage,
     meta: { requiresAuth: true }
   },
   {

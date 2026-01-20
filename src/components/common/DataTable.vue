@@ -17,7 +17,20 @@
             </tr>
           </thead>
           <tbody>
+            <!-- Custom body slot (if provided) -->
             <slot name="body" :items="items"></slot>
+            
+            <!-- Auto-render rows if no body slot provided -->
+            <template v-if="!$slots.body">
+              <tr v-for="item in items" :key="item.id || item.name">
+                <td v-for="column in columns" :key="column.key">
+                  <!-- Custom column slot -->
+                  <slot v-if="$slots[column.key]" :name="column.key" :item="item"></slot>
+                  <!-- Default rendering -->
+                  <span v-else>{{ item[column.key] }}</span>
+                </td>
+              </tr>
+            </template>
             
             <!-- Empty State -->
             <tr v-if="items.length === 0 && !loading">

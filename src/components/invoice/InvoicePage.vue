@@ -30,10 +30,10 @@
             <td>{{ invoice.warehouse_name || `Warehouse ${invoice.warehouse}` }}</td>
             <td>{{ formatDate(invoice.invoice_date) }}</td>
             <td>
-              <span v-if="(props.type === 'sale' || props.type === 'sale_return' || props.type === 'purchase' || props.type === 'purchase_return') && invoice.status !== 'cancelled'" class="badge" :class="getStatusClass(invoice.status, config.statusClassOptions)" @click="handleStatusChange(invoice)" title="Click to change status" style="cursor: pointer;">
+              <span v-if="(props.type === 'sale' || props.type === 'sale_return' || props.type === 'purchase' || props.type === 'purchase_return') && invoice.status !== 'cancelled' && !(props.type === 'sale' && invoice.status === 'delivered')" class="badge" :class="getStatusClass(invoice.status, config.statusClassOptions)" @click="handleStatusChange(invoice)" title="Click to change status" style="cursor: pointer;">
                 {{ invoice.status }}
               </span>
-              <span v-else class="badge" :class="getStatusClass(invoice.status, config.statusClassOptions)" :title="invoice.status === 'cancelled' ? 'Cancelled invoices cannot be changed' : ''">
+              <span v-else class="badge" :class="getStatusClass(invoice.status, config.statusClassOptions)" :title="invoice.status === 'cancelled' ? 'Cancelled invoices cannot be changed' : (props.type === 'sale' && invoice.status === 'delivered' ? 'Delivered sales cannot be cancelled. Use Sale Return instead.' : '')">
                 {{ invoice.status }}
               </span>
             </td>
@@ -646,9 +646,9 @@
                 <i class="bi bi-info-circle me-2"></i>
                 Changing to "cancelled" - no inventory or ledger impact.
               </div>
-              <div v-if="(statusChangeInvoice.status === 'delivered' || statusChangeInvoice.status === 'completed') && newStatus === 'cancelled'" class="alert alert-warning">
+              <div v-if="statusChangeInvoice.status === 'completed' && newStatus === 'cancelled'" class="alert alert-warning">
                 <i class="bi bi-exclamation-triangle me-2"></i>
-                Changing from "{{ statusChangeInvoice.status }}" to "cancelled" will reverse inventory and ledger entries.
+                Changing from "completed" to "cancelled" will reverse inventory and ledger entries.
               </div>
               <div v-if="statusChangeInvoice.status === 'cancelled' && (newStatus === 'delivered' || newStatus === 'completed')" class="alert alert-info">
                 <i class="bi bi-info-circle me-2"></i>
@@ -731,7 +731,7 @@ const availableStatusOptions = computed(() => {
   
   // Rules for Sale:
   // - pending → delivered or cancelled: allowed
-  // - delivered → cancelled: allowed
+  // - delivered → CANNOT be cancelled (use sale return instead)
   // - cancelled → cannot be changed (locked)
   // - delivered → pending: NOT allowed
   
@@ -745,8 +745,11 @@ const availableStatusOptions = computed(() => {
     // For sale: pending, delivered, cancelled
     // For purchase: pending, completed, cancelled
     return config.statusOptions
-  } else if (currentStatus === 'delivered' || currentStatus === 'completed') {
-    // delivered (sale) or completed (purchase) → cancelled only
+  } else if (currentStatus === 'delivered') {
+    // Delivered sales cannot be cancelled - use sale return instead
+    return ['delivered'] // Only can keep as delivered (locked)
+  } else if (currentStatus === 'completed') {
+    // Completed purchases → cancelled only
     return [currentStatus, 'cancelled'] // Cannot go back to pending
   } else if (currentStatus === 'cancelled') {
     return ['cancelled'] // Cancelled invoices cannot be changed
@@ -1232,6 +1235,12 @@ const handleStatusChange = (invoice) => {
   // Prevent status change for cancelled invoices
   if (invoice.status === 'cancelled') {
     alert('Cancelled invoices cannot be changed.')
+    return
+  }
+  
+  // Prevent status change for delivered sales - use sale return instead
+  if (props.type === 'sale' && invoice.status === 'delivered') {
+    alert('Delivered sales cannot be cancelled. Please create a Sale Return instead.')
     return
   }
   
