@@ -37,8 +37,39 @@
                 {{ invoice.status }}
               </span>
             </td>
+            <td v-if="props.type === 'sale' || props.type === 'purchase'">
+              <span
+                v-if="invoice.return_status === 'fully_returned'"
+                class="badge bg-danger"
+                title="All items have been returned"
+              >
+                Fully Returned
+              </span>
+              <span
+                v-else-if="invoice.return_status === 'partially_returned'"
+                class="badge bg-warning text-dark"
+                title="Some items have been returned"
+              >
+                Partially Returned
+              </span>
+              <span v-else class="text-muted">-</span>
+            </td>
             <td>
-              <span class="badge" :class="getPaymentStatusClass(invoice.payment_status)">
+              <span
+                v-if="isPaymentClickable(invoice)"
+                class="badge"
+                :class="getPaymentStatusClass(invoice.payment_status)"
+                title="Click to take payment (Cash)"
+                style="cursor: pointer;"
+                @click="openPaymentModal(invoice)"
+              >
+                {{ invoice.payment_status || 'unpaid' }}
+              </span>
+              <span
+                v-else
+                class="badge"
+                :class="getPaymentStatusClass(invoice.payment_status)"
+              >
                 {{ invoice.payment_status || 'unpaid' }}
               </span>
             </td>
@@ -669,6 +700,48 @@
         </div>
       </div>
     </div>
+
+    <!-- Take Payment Modal (Cash only, for sale/purchase) -->
+    <div v-if="props.type === 'sale' || props.type === 'purchase'" class="modal fade" tabindex="-1" aria-hidden="true" ref="paymentModalRef">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Take Payment (Cash)</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div v-if="paymentInvoice">
+              <p class="mb-3">
+                <strong>Invoice:</strong> {{ paymentInvoice.invoice_number || `#${paymentInvoice.id}` }}<br>
+                <strong>{{ config.entityLabel }}:</strong> {{ paymentInvoice[config.entityNameField] || '-' }}<br>
+                <strong>Grand Total:</strong> {{ formatCurrency(paymentInvoice.grand_total || 0) }}<br>
+                <strong>Paid:</strong> {{ formatCurrency(paymentInvoice.paid_amount || 0) }}<br>
+                <strong>Due:</strong>
+                <span class="fw-semibold" :class="paymentDue > 0 ? 'text-danger' : 'text-success'">
+                  {{ formatCurrency(paymentDue) }}
+                </span>
+              </p>
+
+              <div class="mb-3">
+                <label class="form-label">Payment Amount <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <span class="input-group-text">৳</span>
+                  <input v-model.number="paymentAmount" type="number" min="0.01" step="0.01" class="form-control text-end" />
+                </div>
+                <div class="form-text">Cash only for now.</div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" @click="handleSavePayment" :disabled="savingPayment || !paymentAmount || paymentAmount <= 0">
+              <span v-if="savingPayment" class="spinner-border spinner-border-sm me-2"></span>
+              Take Payment
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -720,6 +793,10 @@ const pagination = usePagination(10)
 const statusModalRef = ref(null)
 const statusChangeInvoice = ref(null)
 const newStatus = ref('')
+const paymentModalRef = ref(null)
+const paymentInvoice = ref(null)
+const paymentAmount = ref(0)
+const savingPayment = ref(false)
 
 // Computed: Available status options based on current status
 const availableStatusOptions = computed(() => {
@@ -1230,6 +1307,80 @@ const resetForm = () => {
 }
 
 let statusModalInstance = null
+let paymentModalInstance = null
+
+const paymentDue = computed(() => {
+  if (!paymentInvoice.value) return 0
+  const gt = parseFloat(paymentInvoice.value.grand_total) || 0
+  const paid = parseFloat(paymentInvoice.value.paid_amount) || 0
+  return parseFloat((gt - paid).toFixed(2))
+})
+
+const isPaymentClickable = (invoice) => {
+  if (!(props.type === 'sale' || props.type === 'purchase')) return false
+  if (!invoice) return false
+  if (invoice.status === 'cancelled') return false
+  const ps = (invoice.payment_status || '').toLowerCase()
+  return ps === 'unpaid' || ps === 'partial'
+}
+
+const buildInvoiceUpdatePayload = (fullInvoice, overrides = {}) => {
+  return {
+    id: fullInvoice.id,
+    [config.entityField]: fullInvoice[config.entityField],
+    warehouse: fullInvoice.warehouse,
+    invoice_date: fullInvoice.invoice_date,
+    status: fullInvoice.status,
+    items: fullInvoice.items || [],
+    sub_total: fullInvoice.sub_total,
+    tax: fullInvoice.tax,
+    discount: fullInvoice.discount,
+    delivery_charge: fullInvoice.delivery_charge,
+    paid_amount: fullInvoice.paid_amount,
+    notes: fullInvoice.notes || '',
+    ...overrides
+  }
+}
+
+const openPaymentModal = (invoice) => {
+  paymentInvoice.value = invoice
+  // default amount = due
+  paymentAmount.value = Math.max(0, parseFloat((parseFloat(invoice.grand_total || 0) - parseFloat(invoice.paid_amount || 0)).toFixed(2)))
+
+  if (paymentModalRef.value) {
+    if (!paymentModalInstance) {
+      paymentModalInstance = new Modal(paymentModalRef.value)
+    }
+    paymentModalInstance.show()
+  }
+}
+
+const handleSavePayment = async () => {
+  if (!paymentInvoice.value || !paymentAmount.value || paymentAmount.value <= 0) return
+
+  savingPayment.value = true
+  try {
+    const endpoint =
+      props.type === 'sale'
+        ? `/sales/${paymentInvoice.value.id}/take-payment/`
+        : `/purchases/${paymentInvoice.value.id}/take-payment/`
+
+    await api.post(endpoint, {
+      amount: paymentAmount.value
+    })
+
+    paymentModalInstance?.hide()
+    paymentInvoice.value = null
+    paymentAmount.value = 0
+
+    await fetchInvoices()
+  } catch (error) {
+    console.error('Error taking payment:', error)
+    alert('Failed to take payment. Please try again.')
+  } finally {
+    savingPayment.value = false
+  }
+}
 
 const handleStatusChange = (invoice) => {
   // Prevent status change for cancelled invoices
@@ -1277,20 +1428,7 @@ const handleSaveStatusChange = async () => {
     const fullInvoice = await invoiceStore[config.fetchSingleMethod](statusChangeInvoice.value.id)
     
     // Update only the status field
-    const updateData = {
-      id: fullInvoice.id,
-      customer: fullInvoice.customer,
-      warehouse: fullInvoice.warehouse,
-      invoice_date: fullInvoice.invoice_date,
-      status: newStatus.value,
-      items: fullInvoice.items || [],
-      sub_total: fullInvoice.sub_total,
-      tax: fullInvoice.tax,
-      discount: fullInvoice.discount,
-      delivery_charge: fullInvoice.delivery_charge,
-      paid_amount: fullInvoice.paid_amount,
-      notes: fullInvoice.notes || ''
-    }
+    const updateData = buildInvoiceUpdatePayload(fullInvoice, { status: newStatus.value })
 
     await invoiceStore[config.updateMethod](fullInvoice.id, updateData)
     

@@ -47,7 +47,7 @@ const routes = [
   {
     path: '/sale',
     name: 'Sale',
-    component: SalesManagementPage,
+    component: SalePage,
     meta: { requiresAuth: true }
   },
   {

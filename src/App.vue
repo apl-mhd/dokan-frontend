@@ -6,6 +6,7 @@ import { useAuthStore } from './stores/authStore'
 const sidebarOpen = ref(true)
 const productsMenuOpen = ref(false)
 const purchaseMenuOpen = ref(false)
+const saleMenuOpen = ref(false)
 const contactsMenuOpen = ref(false)
 const isMobile = ref(false)
 const route = useRoute()
@@ -43,6 +44,10 @@ const togglePurchaseMenu = () => {
   purchaseMenuOpen.value = !purchaseMenuOpen.value
 }
 
+const toggleSaleMenu = () => {
+  saleMenuOpen.value = !saleMenuOpen.value
+}
+
 const toggleContactsMenu = () => {
   contactsMenuOpen.value = !contactsMenuOpen.value
 }
@@ -50,6 +55,11 @@ const toggleContactsMenu = () => {
 // Check if current route is in purchase section
 const isPurchaseSection = computed(() => {
   return ['/purchase', '/purchase-returns'].includes(route.path)
+})
+
+// Check if current route is in sale section
+const isSaleSection = computed(() => {
+  return ['/sale', '/sale-returns'].includes(route.path)
 })
 
 // Check if current route is in products section
@@ -71,6 +81,17 @@ const isLoginPage = computed(() => {
 watch(() => route.path, (newPath) => {
   if (['/purchase', '/purchase-returns'].includes(newPath)) {
     purchaseMenuOpen.value = true
+
+    // On mobile, close sidebar after navigation
+    if (isMobile.value) {
+      setTimeout(() => {
+        sidebarOpen.value = false
+      }, 300)
+    }
+  }
+
+  if (['/sale', '/sale-returns'].includes(newPath)) {
+    saleMenuOpen.value = true
 
     // On mobile, close sidebar after navigation
     if (isMobile.value) {
@@ -166,11 +187,32 @@ const handleLogout = () => {
           </div>
         </li>
 
+        <!-- Sale Parent Menu -->
         <li class="nav-item">
-          <router-link to="/sale" class="nav-link" :class="{ active: $route.path === '/sale' }" :title="sidebarOpen ? '' : 'Sale'">
+          <div class="nav-link parent-menu" :class="{ 'active': isSaleSection }" @click="toggleSaleMenu" :title="sidebarOpen ? '' : 'Sale'">
             <i class="bi bi-cash-coin"></i>
-            <span v-show="sidebarOpen" class="ms-2">Sale</span>
-          </router-link>
+            <span v-show="sidebarOpen" class="ms-2 flex-grow-1">Sale</span>
+            <i v-show="sidebarOpen" class="bi chevron-icon ms-auto" :class="saleMenuOpen ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
+          </div>
+
+          <!-- Sale Submenu -->
+          <div class="submenu-collapse" :class="{ 'show': saleMenuOpen && sidebarOpen }">
+            <ul class="nav flex-column submenu">
+              <li class="nav-item">
+                <router-link to="/sale" class="nav-link submenu-link" :class="{ 'active': $route.path === '/sale' }">
+                  <i class="bi bi-cash-coin"></i>
+                  <span class="ms-2">Sales</span>
+                </router-link>
+              </li>
+
+              <li class="nav-item">
+                <router-link to="/sale-returns" class="nav-link submenu-link" :class="{ 'active': $route.path === '/sale-returns' }">
+                  <i class="bi bi-arrow-return-left"></i>
+                  <span class="ms-2">Sale Returns</span>
+                </router-link>
+              </li>
+            </ul>
+          </div>
         </li>
 
         <!-- Products Parent Menu -->

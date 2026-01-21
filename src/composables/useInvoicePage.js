@@ -181,16 +181,28 @@ export function useInvoicePage(type) {
   }
 
   // Table columns based on type
-  const columns = computed(() => [
-    { key: 'invoice_number', label: 'Invoice #', width: '120px' },
-    { key: config.entityField, label: config.entityLabel },
-    { key: 'warehouse', label: 'Warehouse' },
-    { key: 'invoice_date', label: 'Date', width: '120px' },
-    { key: 'status', label: 'Status', width: '100px' },
-    { key: 'payment_status', label: 'Payment', width: '100px' },
-    { key: 'grand_total', label: 'Grand Total', width: '120px' },
-    { key: 'actions', label: 'Actions', width: '180px' }
-  ])
+  const columns = computed(() => {
+    const base = [
+      { key: 'invoice_number', label: 'Invoice #', width: '120px' },
+      { key: config.entityField, label: config.entityLabel },
+      { key: 'warehouse', label: 'Warehouse' },
+      { key: 'invoice_date', label: 'Date', width: '120px' },
+      { key: 'status', label: 'Status', width: '100px' }
+    ]
+
+    // Purchase/Sale: show return status (not/partial/full)
+    if (type === 'sale' || type === 'purchase') {
+      base.push({ key: 'return_status', label: 'Return Status', width: '140px' })
+    }
+
+    base.push(
+      { key: 'payment_status', label: 'Payment', width: '100px' },
+      { key: 'grand_total', label: 'Grand Total', width: '120px' },
+      { key: 'actions', label: 'Actions', width: '180px' }
+    )
+
+    return base
+  })
 
   return {
     config,

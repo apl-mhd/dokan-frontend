@@ -95,6 +95,13 @@
           </span>
         </template>
 
+        <template #invoice="{ item }">
+          <span v-if="item.sale_invoice_number || item.purchase_invoice_number">
+            {{ item.sale_invoice_number || item.purchase_invoice_number }}
+          </span>
+          <span v-else class="text-muted">-</span>
+        </template>
+
         <template #reference_number="{ item }">
           <span v-if="item.reference_number">{{ item.reference_number }}</span>
           <span v-else class="text-muted">-</span>
@@ -178,6 +185,7 @@ const currentParties = computed(() => {
 const tableColumns = computed(() => [
   { key: 'date', label: 'Date', sortable: true },
   { key: 'party', label: activeTab.value === 'customer' ? 'Customer' : 'Supplier' },
+  { key: 'invoice', label: 'Invoice' },
   { key: 'payment_method', label: 'Method' },
   { key: 'amount', label: 'Amount', sortable: true },
   { key: 'status', label: 'Status' },
@@ -337,16 +345,21 @@ onMounted(async () => {
 
 <style scoped>
 .nav-tabs .nav-link {
-  color: #6c757d;
+  color: #6c757d !important;
 }
 
 .nav-tabs .nav-link.active {
-  color: #0d6efd;
+  color: #0d6efd !important;
   font-weight: 600;
+  background-color: #fff !important;
 }
 
 .nav-tabs .nav-link:hover {
-  color: #0d6efd;
+  color: #0d6efd !important;
+}
+
+.nav-tabs .nav-link:focus {
+  color: #0d6efd !important;
 }
 
 .card {
