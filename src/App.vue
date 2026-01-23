@@ -77,46 +77,30 @@ const isLoginPage = computed(() => {
   return route.path === '/login'
 })
 
-// Auto-expand products menu when navigating to a product-related page
+// Auto-expand menus and collapse sidebar when navigating
 watch(() => route.path, (newPath) => {
+  // Auto-collapse all parent menus first
+  purchaseMenuOpen.value = false
+  saleMenuOpen.value = false
+  productsMenuOpen.value = false
+  contactsMenuOpen.value = false
+
+  // Auto-expand parent menus based on route
   if (['/purchase', '/purchase-returns'].includes(newPath)) {
     purchaseMenuOpen.value = true
-
-    // On mobile, close sidebar after navigation
-    if (isMobile.value) {
-      setTimeout(() => {
-        sidebarOpen.value = false
-      }, 300)
-    }
-  }
-
-  if (['/sale', '/sale-returns'].includes(newPath)) {
+  } else if (['/sale', '/sale-returns'].includes(newPath)) {
     saleMenuOpen.value = true
-
-    // On mobile, close sidebar after navigation
-    if (isMobile.value) {
-      setTimeout(() => {
-        sidebarOpen.value = false
-      }, 300)
-    }
-  }
-
-  if (['/products', '/categories', '/units', '/product'].includes(newPath)) {
+  } else if (['/products', '/categories', '/units', '/product'].includes(newPath)) {
     productsMenuOpen.value = true
-    
-    // On mobile, close sidebar after navigation
-    if (isMobile.value) {
-      setTimeout(() => {
-        sidebarOpen.value = false
-      }, 300)
-    }
+  } else if (['/supplier', '/customer'].includes(newPath)) {
+    contactsMenuOpen.value = true
   }
 
-  if (['/supplier', '/customer'].includes(newPath)) {
-    contactsMenuOpen.value = true
-
-    // On mobile, close sidebar after navigation
+  // Auto-collapse sidebar on any route change (especially on mobile)
+  // Skip if it's the login page
+  if (newPath !== '/login') {
     if (isMobile.value) {
+      // On mobile, close sidebar after navigation
       setTimeout(() => {
         sidebarOpen.value = false
       }, 300)

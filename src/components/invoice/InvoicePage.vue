@@ -30,29 +30,17 @@
             <td>{{ invoice.warehouse_name || `Warehouse ${invoice.warehouse}` }}</td>
             <td>{{ formatDate(invoice.invoice_date) }}</td>
             <td>
-              <span v-if="(props.type === 'sale' || props.type === 'sale_return' || props.type === 'purchase' || props.type === 'purchase_return') && invoice.status !== 'cancelled' && !(props.type === 'sale' && invoice.status === 'delivered')" class="badge" :class="getStatusClass(invoice.status, config.statusClassOptions)" @click="handleStatusChange(invoice)" title="Click to change status" style="cursor: pointer;">
-                {{ invoice.status }}
-              </span>
-              <span v-else class="badge" :class="getStatusClass(invoice.status, config.statusClassOptions)" :title="invoice.status === 'cancelled' ? 'Cancelled invoices cannot be changed' : (props.type === 'sale' && invoice.status === 'delivered' ? 'Delivered sales cannot be cancelled. Use Sale Return instead.' : '')">
-                {{ invoice.status }}
-              </span>
-            </td>
-            <td v-if="props.type === 'sale' || props.type === 'purchase'">
-              <span
-                v-if="invoice.return_status === 'fully_returned'"
-                class="badge bg-danger"
-                title="All items have been returned"
-              >
-                Fully Returned
+              <span v-if="(props.type === 'sale' || props.type === 'sale_return' || props.type === 'purchase' || props.type === 'purchase_return') && invoice.status !== 'cancelled' && invoice.status !== 'returned' && invoice.status !== 'partial_return' && !(props.type === 'sale' && invoice.status === 'delivered')" class="badge" :class="getStatusClass(invoice.status, config.statusClassOptions)" @click="handleStatusChange(invoice)" title="Click to change status" style="cursor: pointer;">
+                {{ getStatusDisplayLabel(invoice.status) }}
               </span>
               <span
-                v-else-if="invoice.return_status === 'partially_returned'"
-                class="badge bg-warning text-dark"
-                title="Some items have been returned"
+                v-else
+                class="badge"
+                :class="getStatusClass(invoice.status, config.statusClassOptions)"
+                title=""
               >
-                Partially Returned
+                {{ getStatusDisplayLabel(invoice.status) }}
               </span>
-              <span v-else class="text-muted">-</span>
             </td>
             <td>
               <span
@@ -249,7 +237,7 @@
 
                   <div class="col-md-3">
                     <label class="form-label">Status</label>
-                    <VueSelect v-model="formData.status" :options="config.statusOptions" placeholder="Select Status" />
+                    <VueSelect v-model="formData.status" :options="config.formStatusOptions || config.statusOptions" placeholder="Select Status" />
                   </div>
                 </div>
 
@@ -535,7 +523,7 @@
 
               <div class="col-md-3">
                 <label class="form-label">Status</label>
-                <VueSelect v-model="formData.status" :options="config.statusOptions" placeholder="Select Status" />
+                <VueSelect v-model="formData.status" :options="config.formStatusOptions || config.statusOptions" placeholder="Select Status" />
               </div>
             </div>
 
@@ -817,6 +805,11 @@ const availableStatusOptions = computed(() => {
   // - completed → cancelled: allowed
   // - cancelled → cannot be changed (locked)
   // - completed → pending: NOT allowed
+  
+  // Return statuses cannot be changed (auto-calculated)
+  if (currentStatus === 'returned' || currentStatus === 'partial_return') {
+    return [currentStatus] // Locked - return status is auto-calculated
+  }
   
   if (currentStatus === 'pending') {
     // For sale: pending, delivered, cancelled
@@ -1316,6 +1309,27 @@ const paymentDue = computed(() => {
   return parseFloat((gt - paid).toFixed(2))
 })
 
+const getStatusDisplayLabel = (status) => {
+  const labels = {
+    pending: 'Pending',
+    delivered: 'Delivered',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+    partial_return: 'Partially Returned',
+    returned: 'Fully Returned'
+  }
+  return labels[(status || '').toLowerCase()] || status || '-'
+}
+
+const getStatusTooltip = (status) => {
+  const s = (status || '').toLowerCase()
+  if (s === 'cancelled') return 'Cancelled invoices cannot be changed'
+  if (s === 'returned' || s === 'partial_return') return 'Return status is auto-calculated'
+  if (props.type === 'sale' && s === 'delivered') return 'Use Sale Return instead'
+  if ((props.type === 'purchase' || props.type === 'purchase_return') && s === 'completed') return 'Use Purchase Return instead'
+  return ''
+}
+
 const isPaymentClickable = (invoice) => {
   if (!(props.type === 'sale' || props.type === 'purchase')) return false
   if (!invoice) return false
@@ -1389,16 +1403,24 @@ const handleStatusChange = (invoice) => {
     return
   }
   
+  // Prevent status change for returned/partially returned invoices
+  if (invoice.status === 'returned' || invoice.status === 'partial_return') {
+    const invoiceType = props.type === 'sale' ? 'sales' : 'purchases'
+    alert(`Returned ${invoiceType} cannot be changed.`)
+    return
+  }
+  
   // Prevent status change for delivered sales - use sale return instead
   if (props.type === 'sale' && invoice.status === 'delivered') {
     alert('Delivered sales cannot be cancelled. Please create a Sale Return instead.')
     return
   }
   
-  // Prevent status change for completed purchases (if not changing to cancelled)
+  // Prevent status change for completed purchases with returns - use purchase return instead
   if ((props.type === 'purchase' || props.type === 'purchase_return') && invoice.status === 'completed') {
     // Allow opening modal for completed purchases (they can change to cancelled)
     // The availableStatusOptions will limit options to ['completed', 'cancelled']
+    // But if it has returns, the status will be 'returned' or 'partial_return' which are already blocked above
   }
   
   statusChangeInvoice.value = invoice

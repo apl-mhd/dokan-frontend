@@ -68,7 +68,8 @@ export function useInvoicePage(type) {
       apiEndpoint: '/sales/',
       pdfEndpoint: (id) => `/sales/${id}/pdf/`,
       pdfFileName: (invoice) => `invoice_${invoice.invoice_number || invoice.id}.pdf`,
-      statusOptions: ['pending', 'delivered', 'cancelled'],
+      statusOptions: ['pending', 'delivered', 'partial_return', 'returned', 'cancelled'],
+      formStatusOptions: ['pending', 'delivered', 'cancelled'], // Only these options in form (status field not required)
       paymentStatusOptions: ['unpaid', 'partial', 'paid', 'overpaid'],
       finalStatus: 'delivered',
       finalStatusMessage: 'Cannot edit a delivered sale',
@@ -190,10 +191,7 @@ export function useInvoicePage(type) {
       { key: 'status', label: 'Status', width: '100px' }
     ]
 
-    // Purchase/Sale: show return status (not/partial/full)
-    if (type === 'sale' || type === 'purchase') {
-      base.push({ key: 'return_status', label: 'Return Status', width: '140px' })
-    }
+    // Removed return_status column - now shown in status column
 
     base.push(
       { key: 'payment_status', label: 'Payment', width: '100px' },

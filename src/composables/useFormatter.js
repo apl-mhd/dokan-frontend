@@ -94,6 +94,8 @@ export function useFormatter() {
       pending: 'bg-warning text-dark',
       completed: 'bg-success',
       delivered: 'bg-success',
+      partial_return: 'bg-warning text-dark', // Partially Returned
+      returned: 'bg-danger', // Fully Returned
       cancelled: 'bg-danger',
       active: 'bg-success',
       inactive: 'bg-secondary',
