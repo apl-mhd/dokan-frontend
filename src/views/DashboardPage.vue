@@ -72,22 +72,58 @@
       <div class="row mb-4">
         <div class="col-md-12">
           <div class="card shadow-sm">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-              <h5 class="mb-0">
-                <i class="bi bi-graph-up-arrow me-2"></i>Sales vs Dues vs Payments
-              </h5>
-              <ul class="nav nav-tabs card-header-tabs">
-                <li class="nav-item">
-                  <a href="#" class="nav-link" :class="{ active: combinedPeriod === 'weekly' }" @click.stop.prevent="updateCombinedPeriod('weekly')">
-                    Weekly
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a href="#" class="nav-link" :class="{ active: combinedPeriod === 'monthly' }" @click.stop.prevent="updateCombinedPeriod('monthly')">
-                    Monthly
-                  </a>
-                </li>
-              </ul>
+            <div class="card-header bg-light">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="mb-0">
+                  <i class="bi bi-graph-up-arrow me-2"></i>Sales vs Dues vs Payments
+                </h5>
+                <ul class="nav nav-tabs card-header-tabs">
+                  <li class="nav-item">
+                    <a href="#" class="nav-link" :class="{ active: combinedPeriod === 'weekly' }" @click.stop.prevent="updateCombinedPeriod('weekly')">
+                      Weekly
+                    </a>
+                  </li>
+                  <li class="nav-item">
+                    <a href="#" class="nav-link" :class="{ active: combinedPeriod === 'monthly' }" @click.stop.prevent="updateCombinedPeriod('monthly')">
+                      Monthly
+                    </a>
+                  </li>
+                  <li class="nav-item">
+                    <a href="#" class="nav-link" :class="{ active: combinedPeriod === 'custom' }" @click.stop.prevent="combinedPeriod = 'custom'">
+                      Custom Range
+                    </a>
+                  </li>
+                </ul>
+              </div>
+              <div v-if="combinedPeriod === 'custom'" class="d-flex gap-2 align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                  <label class="mb-0 small">From:</label>
+                  <input 
+                    type="date" 
+                    v-model="combinedDateFrom" 
+                    class="form-control form-control-sm"
+                    style="width: auto;"
+                    @change="updateCombinedCustomDateRange"
+                  />
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <label class="mb-0 small">To:</label>
+                  <input 
+                    type="date" 
+                    v-model="combinedDateTo" 
+                    class="form-control form-control-sm"
+                    style="width: auto;"
+                    @change="updateCombinedCustomDateRange"
+                  />
+                </div>
+                <button 
+                  class="btn btn-sm btn-outline-secondary" 
+                  @click="applyCombinedDateRange"
+                  :disabled="!combinedDateFrom || !combinedDateTo"
+                >
+                  Apply
+                </button>
+              </div>
             </div>
             <div class="card-body">
               <Line :key="`sales-combined-${combinedPeriod}`" :data="combinedChartData" :options="combinedChartOptions" />
@@ -153,22 +189,58 @@
       <div class="row mb-4">
         <div class="col-md-12">
           <div class="card shadow-sm">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-              <h5 class="mb-0">
-                <i class="bi bi-graph-down-arrow me-2"></i>Purchase vs Payments vs Dues
-              </h5>
-              <ul class="nav nav-tabs card-header-tabs">
-                <li class="nav-item">
-                  <a href="#" class="nav-link" :class="{ active: purchaseCombinedPeriod === 'weekly' }" @click.stop.prevent="updatePurchaseCombinedPeriod('weekly')">
-                    Weekly
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a href="#" class="nav-link" :class="{ active: purchaseCombinedPeriod === 'monthly' }" @click.stop.prevent="updatePurchaseCombinedPeriod('monthly')">
-                    Monthly
-                  </a>
-                </li>
-              </ul>
+            <div class="card-header bg-light">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="mb-0">
+                  <i class="bi bi-graph-down-arrow me-2"></i>Purchase vs Payments vs Dues
+                </h5>
+                <ul class="nav nav-tabs card-header-tabs">
+                  <li class="nav-item">
+                    <a href="#" class="nav-link" :class="{ active: purchaseCombinedPeriod === 'weekly' }" @click.stop.prevent="updatePurchaseCombinedPeriod('weekly')">
+                      Weekly
+                    </a>
+                  </li>
+                  <li class="nav-item">
+                    <a href="#" class="nav-link" :class="{ active: purchaseCombinedPeriod === 'monthly' }" @click.stop.prevent="updatePurchaseCombinedPeriod('monthly')">
+                      Monthly
+                    </a>
+                  </li>
+                  <li class="nav-item">
+                    <a href="#" class="nav-link" :class="{ active: purchaseCombinedPeriod === 'custom' }" @click.stop.prevent="purchaseCombinedPeriod = 'custom'">
+                      Custom Range
+                    </a>
+                  </li>
+                </ul>
+              </div>
+              <div v-if="purchaseCombinedPeriod === 'custom'" class="d-flex gap-2 align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                  <label class="mb-0 small">From:</label>
+                  <input 
+                    type="date" 
+                    v-model="purchaseCombinedDateFrom" 
+                    class="form-control form-control-sm"
+                    style="width: auto;"
+                    @change="updatePurchaseCombinedCustomDateRange"
+                  />
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <label class="mb-0 small">To:</label>
+                  <input 
+                    type="date" 
+                    v-model="purchaseCombinedDateTo" 
+                    class="form-control form-control-sm"
+                    style="width: auto;"
+                    @change="updatePurchaseCombinedCustomDateRange"
+                  />
+                </div>
+                <button 
+                  class="btn btn-sm btn-outline-secondary" 
+                  @click="applyPurchaseCombinedDateRange"
+                  :disabled="!purchaseCombinedDateFrom || !purchaseCombinedDateTo"
+                >
+                  Apply
+                </button>
+              </div>
             </div>
             <div class="card-body">
               <Line :data="purchaseCombinedChartData" :options="combinedChartOptions" />
@@ -322,6 +394,10 @@ const duesTab = ref('sales')
 const duesPeriod = ref('weekly')
 const combinedPeriod = ref('weekly')
 const purchaseCombinedPeriod = ref('weekly')
+const combinedDateFrom = ref('')
+const combinedDateTo = ref('')
+const purchaseCombinedDateFrom = ref('')
+const purchaseCombinedDateTo = ref('')
 const stats = ref({
   sales: {
     today: { total: 0, count: 0 },
@@ -631,7 +707,7 @@ const chartOptions = {
 }
 
 // Methods
-const fetchDashboardStats = async (periodOverride = null) => {
+const fetchDashboardStats = async (periodOverride = null, dateFrom = null, dateTo = null, chartType = 'sales') => {
   loading.value = true
   error.value = null
   try {
@@ -644,7 +720,16 @@ const fetchDashboardStats = async (periodOverride = null) => {
       }
     }
     
-    const response = await api.get('/dashboard/stats/', { params: { period } })
+    const params = { period }
+    if (dateFrom && dateTo) {
+      params.date_from = dateFrom
+      params.date_to = dateTo
+    }
+    if (chartType) {
+      params.chart_type = chartType
+    }
+    
+    const response = await api.get('/dashboard/stats/', { params })
     stats.value = response.data.data
   } catch (err) {
     error.value = err.response?.data?.message || 'Failed to fetch dashboard statistics'
@@ -697,24 +782,71 @@ const updateDuesPeriod = (period) => {
 const updateCombinedPeriod = async (period) => {
   if (combinedPeriod.value === period) return // Already set, no need to update
   combinedPeriod.value = period
-  salesPeriod.value = period // Sync all charts to same period
-  purchasePeriod.value = period
-  paymentPeriod.value = period
-  duesPeriod.value = period
-  purchaseCombinedPeriod.value = period
-  await fetchDashboardStats(period)
+  if (period !== 'custom') {
+    // Reset date range when switching to weekly/monthly
+    combinedDateFrom.value = ''
+    combinedDateTo.value = ''
+    salesPeriod.value = period // Sync all charts to same period
+    purchasePeriod.value = period
+    paymentPeriod.value = period
+    duesPeriod.value = period
+    purchaseCombinedPeriod.value = period
+    await fetchDashboardStats(period)
+  }
   // Force chart update by triggering reactivity
   await nextTick()
 }
 
+const updateCombinedCustomDateRange = () => {
+  // This is called when date inputs change, but we wait for Apply button
+}
+
+const applyCombinedDateRange = async () => {
+  if (!combinedDateFrom.value || !combinedDateTo.value) return
+  
+  // Validate date range
+  if (new Date(combinedDateFrom.value) > new Date(combinedDateTo.value)) {
+    error.value = 'Start date must be before end date'
+    return
+  }
+  
+  await fetchDashboardStats('custom', combinedDateFrom.value, combinedDateTo.value)
+  await nextTick()
+}
+
 const updatePurchaseCombinedPeriod = async (period) => {
+  if (purchaseCombinedPeriod.value === period) return // Already set, no need to update
   purchaseCombinedPeriod.value = period
-  salesPeriod.value = period // Sync all charts to same period
-  purchasePeriod.value = period
-  paymentPeriod.value = period
-  duesPeriod.value = period
-  combinedPeriod.value = period
-  await fetchDashboardStats(period)
+  if (period !== 'custom') {
+    // Reset date range when switching to weekly/monthly
+    purchaseCombinedDateFrom.value = ''
+    purchaseCombinedDateTo.value = ''
+    salesPeriod.value = period // Sync all charts to same period
+    purchasePeriod.value = period
+    paymentPeriod.value = period
+    duesPeriod.value = period
+    combinedPeriod.value = period
+    await fetchDashboardStats(period, null, null, 'purchase')
+  }
+  // Force chart update by triggering reactivity
+  await nextTick()
+}
+
+const updatePurchaseCombinedCustomDateRange = () => {
+  // This is called when date inputs change, but we wait for Apply button
+}
+
+const applyPurchaseCombinedDateRange = async () => {
+  if (!purchaseCombinedDateFrom.value || !purchaseCombinedDateTo.value) return
+  
+  // Validate date range
+  if (new Date(purchaseCombinedDateFrom.value) > new Date(purchaseCombinedDateTo.value)) {
+    error.value = 'Start date must be before end date'
+    return
+  }
+  
+  await fetchDashboardStats('custom', purchaseCombinedDateFrom.value, purchaseCombinedDateTo.value, 'purchase')
+  await nextTick()
 }
 
 const switchDuesTab = (tab) => {
