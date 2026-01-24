@@ -68,37 +68,29 @@
         </div>
       </div>
 
-      <!-- Sales Trend Chart -->
+      <!-- Combined Sales, Dues, and Payments Chart -->
       <div class="row mb-4">
         <div class="col-md-12">
           <div class="card shadow-sm">
             <div class="card-header bg-light d-flex justify-content-between align-items-center">
               <h5 class="mb-0">
-                <i class="bi bi-graph-up me-2"></i>Sales Trend
+                <i class="bi bi-graph-up-arrow me-2"></i>Sales vs Dues vs Payments
               </h5>
               <ul class="nav nav-tabs card-header-tabs">
                 <li class="nav-item">
-                  <button
-                    class="nav-link"
-                    :class="{ active: salesPeriod === 'weekly' }"
-                    @click="updateSalesPeriod('weekly')"
-                  >
+                  <a href="#" class="nav-link" :class="{ active: combinedPeriod === 'weekly' }" @click.stop.prevent="updateCombinedPeriod('weekly')">
                     Weekly
-                  </button>
+                  </a>
                 </li>
                 <li class="nav-item">
-                  <button
-                    class="nav-link"
-                    :class="{ active: salesPeriod === 'monthly' }"
-                    @click="updateSalesPeriod('monthly')"
-                  >
+                  <a href="#" class="nav-link" :class="{ active: combinedPeriod === 'monthly' }" @click.stop.prevent="updateCombinedPeriod('monthly')">
                     Monthly
-                  </button>
+                  </a>
                 </li>
               </ul>
             </div>
             <div class="card-body">
-              <Line :data="salesChartData" :options="chartOptions" />
+              <Line :key="`sales-combined-${combinedPeriod}`" :data="combinedChartData" :options="combinedChartOptions" />
             </div>
           </div>
         </div>
@@ -157,102 +149,29 @@
         </div>
       </div>
 
-      <!-- Purchase Trend Chart -->
+      <!-- Combined Purchase, Payments, and Dues Chart -->
       <div class="row mb-4">
         <div class="col-md-12">
           <div class="card shadow-sm">
             <div class="card-header bg-light d-flex justify-content-between align-items-center">
               <h5 class="mb-0">
-                <i class="bi bi-graph-down me-2"></i>Purchase Trend
+                <i class="bi bi-graph-down-arrow me-2"></i>Purchase vs Payments vs Dues
               </h5>
               <ul class="nav nav-tabs card-header-tabs">
                 <li class="nav-item">
-                  <button
-                    class="nav-link"
-                    :class="{ active: purchasePeriod === 'weekly' }"
-                    @click="updatePurchasePeriod('weekly')"
-                  >
+                  <a href="#" class="nav-link" :class="{ active: purchaseCombinedPeriod === 'weekly' }" @click.stop.prevent="updatePurchaseCombinedPeriod('weekly')">
                     Weekly
-                  </button>
+                  </a>
                 </li>
                 <li class="nav-item">
-                  <button
-                    class="nav-link"
-                    :class="{ active: purchasePeriod === 'monthly' }"
-                    @click="updatePurchasePeriod('monthly')"
-                  >
+                  <a href="#" class="nav-link" :class="{ active: purchaseCombinedPeriod === 'monthly' }" @click.stop.prevent="updatePurchaseCombinedPeriod('monthly')">
                     Monthly
-                  </button>
+                  </a>
                 </li>
               </ul>
             </div>
             <div class="card-body">
-              <Line :data="purchaseChartData" :options="chartOptions" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Dues Overview Charts -->
-      <div class="row mb-4">
-        <div class="col-md-12">
-          <div class="card shadow-sm">
-            <div class="card-header bg-light">
-              <ul class="nav nav-tabs card-header-tabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                  <button
-                    class="nav-link"
-                    :class="{ active: duesTab === 'sales' }"
-                    @click="switchDuesTab('sales')"
-                    type="button"
-                  >
-                    <i class="bi bi-cash-coin me-2"></i>Sales Dues
-                  </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                  <button
-                    class="nav-link"
-                    :class="{ active: duesTab === 'purchases' }"
-                    @click="switchDuesTab('purchases')"
-                    type="button"
-                  >
-                    <i class="bi bi-bag-plus me-2"></i>Purchase Dues
-                  </button>
-                </li>
-              </ul>
-            </div>
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">
-                  <span v-if="duesTab === 'sales'">
-                    <i class="bi bi-graph-up me-2 text-warning"></i>Customer Dues Trend
-                  </span>
-                  <span v-else>
-                    <i class="bi bi-graph-down me-2 text-danger"></i>Supplier Dues Trend
-                  </span>
-                </h5>
-                <ul class="nav nav-pills">
-                  <li class="nav-item">
-                    <button
-                      class="btn btn-sm"
-                      :class="duesPeriod === 'weekly' ? 'btn-primary' : 'btn-outline-primary'"
-                      @click="updateDuesPeriod('weekly')"
-                    >
-                      Weekly
-                    </button>
-                  </li>
-                  <li class="nav-item ms-2">
-                    <button
-                      class="btn btn-sm"
-                      :class="duesPeriod === 'monthly' ? 'btn-primary' : 'btn-outline-primary'"
-                      @click="updateDuesPeriod('monthly')"
-                    >
-                      Monthly
-                    </button>
-                  </li>
-                </ul>
-              </div>
-              <Line :data="duesChartData" :options="duesChartOptions" />
+              <Line :data="purchaseCombinedChartData" :options="combinedChartOptions" />
             </div>
           </div>
         </div>
@@ -337,12 +256,13 @@
           </div>
         </div>
       </div>
+
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { Line } from 'vue-chartjs'
 import {
   Chart as ChartJS,
@@ -397,8 +317,11 @@ const loading = ref(false)
 const error = ref(null)
 const salesPeriod = ref('weekly')
 const purchasePeriod = ref('weekly')
+const paymentPeriod = ref('weekly')
 const duesTab = ref('sales')
 const duesPeriod = ref('weekly')
+const combinedPeriod = ref('weekly')
+const purchaseCombinedPeriod = ref('weekly')
 const stats = ref({
   sales: {
     today: { total: 0, count: 0 },
@@ -413,6 +336,12 @@ const stats = ref({
     supplier_outstanding: 0,
     trend: [],
     due_trend: []
+  },
+  customer_payments: {
+    trend: []
+  },
+  supplier_payments: {
+    trend: []
   },
   low_stock: []
 })
@@ -447,6 +376,25 @@ const purchaseChartData = computed(() => {
     datasets: [
       {
         label: 'Purchases (৳)',
+        backgroundColor: 'rgba(13, 110, 253, 0.2)',
+        borderColor: 'rgba(13, 110, 253, 1)',
+        data: trend.map(item => item.amount),
+        tension: 0.4
+      }
+    ]
+  }
+})
+
+const paymentChartData = computed(() => {
+  const trend = stats.value.customer_payments?.trend || []
+  return {
+    labels: trend.map(item => {
+      const date = new Date(item.date)
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }),
+    datasets: [
+      {
+        label: 'Customer Payments (৳)',
         backgroundColor: 'rgba(13, 110, 253, 0.2)',
         borderColor: 'rgba(13, 110, 253, 1)',
         data: trend.map(item => item.amount),
@@ -507,6 +455,156 @@ const duesChartOptions = {
   }
 }
 
+// Combined Chart Data - Sales, Dues, and Payments
+const combinedChartData = computed(() => {
+  // Include combinedPeriod in dependencies to force recomputation when period changes
+  const period = combinedPeriod.value
+  const salesTrend = stats.value.sales?.trend || []
+  const duesTrend = stats.value.sales?.due_trend || []
+  const paymentTrend = stats.value.customer_payments?.trend || []
+  
+  // Collect all unique dates from all three trends to ensure we have complete data
+  const allDates = new Set()
+  salesTrend.forEach(item => allDates.add(item.date))
+  duesTrend.forEach(item => allDates.add(item.date))
+  paymentTrend.forEach(item => allDates.add(item.date))
+  
+  // Sort dates chronologically
+  const baseDates = Array.from(allDates).sort()
+  
+  // Create maps for quick lookup by date
+  const salesMap = new Map(salesTrend.map(item => [item.date, item.amount]))
+  const duesMap = new Map(duesTrend.map(item => [item.date, item.amount]))
+  const paymentMap = new Map(paymentTrend.map(item => [item.date, item.amount]))
+  
+  // Build data arrays aligned by date
+  const salesData = baseDates.map(date => salesMap.get(date) || 0)
+  const duesData = baseDates.map(date => duesMap.get(date) || 0)
+  const paymentData = baseDates.map(date => paymentMap.get(date) || 0)
+  
+  // Create labels from base dates
+  const labels = baseDates.map(date => {
+    const d = new Date(date)
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  })
+  
+  return {
+    labels: labels,
+    datasets: [
+      {
+        label: 'Sales (৳)',
+        backgroundColor: 'rgba(25, 135, 84, 0.2)',
+        borderColor: 'rgba(25, 135, 84, 1)',
+        data: salesData,
+        tension: 0.4,
+        fill: false
+      },
+      {
+        label: 'Customer Dues (৳)',
+        backgroundColor: 'rgba(255, 193, 7, 0.2)',
+        borderColor: 'rgba(255, 193, 7, 1)',
+        data: duesData,
+        tension: 0.4,
+        fill: false
+      },
+      {
+        label: 'Customer Payments (৳)',
+        backgroundColor: 'rgba(13, 110, 253, 0.2)',
+        borderColor: 'rgba(13, 110, 253, 1)',
+        data: paymentData,
+        tension: 0.4,
+        fill: false
+      }
+    ]
+  }
+})
+
+const combinedChartOptions = {
+  responsive: true,
+  maintainAspectRatio: true,
+  plugins: {
+    legend: {
+      display: true,
+      position: 'top'
+    },
+    tooltip: {
+      mode: 'index',
+      intersect: false
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      ticks: {
+        callback: function(value) {
+          return '৳' + value.toLocaleString()
+        }
+      }
+    }
+  },
+  interaction: {
+    mode: 'index',
+    intersect: false
+  }
+}
+
+// Combined Purchase Chart Data - Purchase, Payments, and Dues
+const purchaseCombinedChartData = computed(() => {
+  const purchaseTrend = stats.value.purchases.trend || []
+  const duesTrend = stats.value.purchases.due_trend || []
+  const paymentTrend = stats.value.supplier_payments?.trend || []
+  
+  // Use purchase trend as base since it should have all dates
+  // Create maps for quick lookup by date
+  const purchaseMap = new Map(purchaseTrend.map(item => [item.date, item.amount]))
+  const duesMap = new Map(duesTrend.map(item => [item.date, item.amount]))
+  const paymentMap = new Map(paymentTrend.map(item => [item.date, item.amount]))
+  
+  // Use purchase trend dates as the base (they should all have same date range from API)
+  const baseDates = purchaseTrend.map(item => item.date)
+  
+  // Build data arrays aligned by date
+  const purchaseData = baseDates.map(date => purchaseMap.get(date) || 0)
+  const duesData = baseDates.map(date => duesMap.get(date) || 0)
+  const paymentData = baseDates.map(date => paymentMap.get(date) || 0)
+  
+  // Create labels from base dates
+  const labels = baseDates.map(date => {
+    const d = new Date(date)
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  })
+  
+  return {
+    labels: labels,
+    datasets: [
+      {
+        label: 'Purchases (৳)',
+        backgroundColor: 'rgba(13, 110, 253, 0.2)',
+        borderColor: 'rgba(13, 110, 253, 1)',
+        data: purchaseData,
+        tension: 0.4,
+        fill: false
+      },
+      {
+        label: 'Supplier Payments (৳)',
+        backgroundColor: 'rgba(40, 167, 69, 0.2)',
+        borderColor: 'rgba(40, 167, 69, 1)',
+        data: paymentData,
+        tension: 0.4,
+        fill: false
+      },
+      {
+        label: 'Supplier Dues (৳)',
+        backgroundColor: 'rgba(220, 53, 69, 0.2)',
+        borderColor: 'rgba(220, 53, 69, 1)',
+        data: duesData,
+        tension: 0.4,
+        fill: false
+      }
+    ]
+  }
+})
+
 const chartOptions = {
   responsive: true,
   maintainAspectRatio: true,
@@ -559,22 +657,64 @@ const fetchDashboardStats = async (periodOverride = null) => {
 const updateSalesPeriod = (period) => {
   salesPeriod.value = period
   purchasePeriod.value = period // Sync all charts to same period
+  paymentPeriod.value = period
   duesPeriod.value = period
+  combinedPeriod.value = period
+  purchaseCombinedPeriod.value = period
   fetchDashboardStats(period)
 }
 
 const updatePurchasePeriod = (period) => {
   salesPeriod.value = period // Sync all charts to same period
   purchasePeriod.value = period
+  paymentPeriod.value = period
   duesPeriod.value = period
+  combinedPeriod.value = period
+  purchaseCombinedPeriod.value = period
+  fetchDashboardStats(period)
+}
+
+const updatePaymentPeriod = (period) => {
+  paymentPeriod.value = period
+  salesPeriod.value = period // Sync all charts to same period
+  purchasePeriod.value = period
+  duesPeriod.value = period
+  combinedPeriod.value = period
+  purchaseCombinedPeriod.value = period
   fetchDashboardStats(period)
 }
 
 const updateDuesPeriod = (period) => {
   salesPeriod.value = period // Sync all charts to same period
   purchasePeriod.value = period
+  paymentPeriod.value = period
   duesPeriod.value = period
+  combinedPeriod.value = period
+  purchaseCombinedPeriod.value = period
   fetchDashboardStats(period)
+}
+
+const updateCombinedPeriod = async (period) => {
+  if (combinedPeriod.value === period) return // Already set, no need to update
+  combinedPeriod.value = period
+  salesPeriod.value = period // Sync all charts to same period
+  purchasePeriod.value = period
+  paymentPeriod.value = period
+  duesPeriod.value = period
+  purchaseCombinedPeriod.value = period
+  await fetchDashboardStats(period)
+  // Force chart update by triggering reactivity
+  await nextTick()
+}
+
+const updatePurchaseCombinedPeriod = async (period) => {
+  purchaseCombinedPeriod.value = period
+  salesPeriod.value = period // Sync all charts to same period
+  purchasePeriod.value = period
+  paymentPeriod.value = period
+  duesPeriod.value = period
+  combinedPeriod.value = period
+  await fetchDashboardStats(period)
 }
 
 const switchDuesTab = (tab) => {
@@ -616,5 +756,44 @@ onMounted(() => {
 
 .text-dark-50 {
   opacity: 0.7;
+}
+
+/* Fix nav-tabs styling */
+.nav-tabs {
+  border-bottom: 1px solid #dee2e6;
+}
+
+.nav-tabs .nav-item {
+  margin-bottom: -1px;
+}
+
+.nav-tabs .nav-link {
+  color: #495057 !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+  background: transparent !important;
+  cursor: pointer !important;
+  padding: 0.5rem 1rem !important;
+  text-decoration: none !important;
+  user-select: none !important;
+}
+
+.nav-tabs .nav-link:hover:not(.active) {
+  border-bottom-color: #dee2e6 !important;
+  color: #495057 !important;
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+.nav-tabs .nav-link.active {
+  color: #0d6efd !important;
+  background-color: transparent !important;
+  border-bottom-color: #0d6efd !important;
+  border-bottom-width: 2px !important;
+  font-weight: 500 !important;
+}
+
+.nav-tabs .nav-link:focus {
+  outline: none !important;
+  box-shadow: none !important;
 }
 </style>
