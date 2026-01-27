@@ -97,7 +97,17 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <form @submit.prevent="handleSave">
+            <!-- Validation Errors -->
+            <div v-if="formErrors && Object.keys(formErrors).length > 0" class="alert alert-danger">
+              <strong>Please fix the following errors:</strong>
+              <ul class="mb-0 mt-2">
+                <li v-for="(errors, field) in formErrors" :key="field">
+                  <strong>{{ field }}:</strong> {{ Array.isArray(errors) ? errors[0] : errors }}
+                </li>
+              </ul>
+            </div>
+
+            <form @submit.prevent="handleSave" ref="formRef">
               <div class="row">
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Customer Name <span class="text-danger">*</span></label>
@@ -105,10 +115,15 @@
                     v-model="formData.name"
                     type="text"
                     class="form-control"
+                    :class="{ 'is-invalid': formErrors.name }"
                     placeholder="Enter customer name"
                     required
                     maxlength="255"
+                    @blur="validateField('name')"
                   />
+                  <div v-if="formErrors.name" class="invalid-feedback">
+                    {{ Array.isArray(formErrors.name) ? formErrors.name[0] : formErrors.name }}
+                  </div>
                 </div>
 
                 <div class="col-md-6 mb-3">
@@ -117,19 +132,30 @@
                     v-model="formData.email"
                     type="email"
                     class="form-control"
+                    :class="{ 'is-invalid': formErrors.email }"
                     placeholder="Enter email"
+                    @blur="validateField('email')"
                   />
+                  <div v-if="formErrors.email" class="invalid-feedback">
+                    {{ Array.isArray(formErrors.email) ? formErrors.email[0] : formErrors.email }}
+                  </div>
                 </div>
 
                 <div class="col-md-6 mb-3">
-                  <label class="form-label">Phone</label>
+                  <label class="form-label">Phone <span class="text-danger">*</span></label>
                   <input
                     v-model="formData.phone"
                     type="text"
                     class="form-control"
+                    :class="{ 'is-invalid': formErrors.phone }"
                     placeholder="Enter phone number"
+                    required
                     maxlength="20"
+                    @blur="validateField('phone')"
                   />
+                  <div v-if="formErrors.phone" class="invalid-feedback">
+                    {{ Array.isArray(formErrors.phone) ? formErrors.phone[0] : formErrors.phone }}
+                  </div>
                 </div>
 
                 <div class="col-md-6 mb-3">
@@ -147,8 +173,13 @@
                     type="number"
                     step="0.01"
                     class="form-control"
+                    :class="{ 'is-invalid': formErrors.opening_balance }"
                     placeholder="0.00"
+                    @blur="validateField('opening_balance')"
                   />
+                  <div v-if="formErrors.opening_balance" class="invalid-feedback">
+                    {{ Array.isArray(formErrors.opening_balance) ? formErrors.opening_balance[0] : formErrors.opening_balance }}
+                  </div>
                 </div>
 
                 <div class="col-md-6 mb-3">
@@ -157,9 +188,15 @@
                     v-model.number="formData.credit_limit"
                     type="number"
                     step="0.01"
+                    min="0"
                     class="form-control"
+                    :class="{ 'is-invalid': formErrors.credit_limit }"
                     placeholder="0.00"
+                    @blur="validateField('credit_limit')"
                   />
+                  <div v-if="formErrors.credit_limit" class="invalid-feedback">
+                    {{ Array.isArray(formErrors.credit_limit) ? formErrors.credit_limit[0] : formErrors.credit_limit }}
+                  </div>
                 </div>
 
                 <div class="col-md-12 mb-3">
@@ -212,6 +249,8 @@ const pagination = usePagination(10)
 // State
 const isEditing = ref(false)
 const selectedCustomer = ref(null)
+const formRef = ref(null)
+const formErrors = ref({})
 
 const filters = ref({
   search: '',
@@ -311,7 +350,78 @@ const handleEdit = (customer) => {
   showModal()
 }
 
+const validateField = (fieldName) => {
+  // Clear error for this field
+  if (formErrors.value[fieldName]) {
+    delete formErrors.value[fieldName]
+  }
+
+  const value = formData.value[fieldName]
+
+  // Client-side validation
+  switch (fieldName) {
+    case 'name':
+      if (!value || !value.trim()) {
+        formErrors.value.name = 'Customer name cannot be empty.'
+      } else if (value.trim().length < 2) {
+        formErrors.value.name = 'Customer name must be at least 2 characters long.'
+      }
+      break
+    case 'email':
+      if (value && value.trim()) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(value)) {
+          formErrors.value.email = 'Enter a valid email address.'
+        }
+      }
+      break
+    case 'phone':
+      if (!value || !value.trim()) {
+        formErrors.value.phone = 'Phone number is required.'
+      } else {
+        const cleanedPhone = value.replace(/[\s\-+()]/g, '')
+        if (!/^\d+$/.test(cleanedPhone)) {
+          formErrors.value.phone = 'Phone number must contain only digits and common formatting characters.'
+        } else if (cleanedPhone.length < 10) {
+          formErrors.value.phone = 'Phone number must be at least 10 digits long.'
+        }
+      }
+      break
+    case 'credit_limit':
+      if (value !== null && value !== undefined && value < 0) {
+        formErrors.value.credit_limit = 'Credit limit cannot be negative.'
+      }
+      break
+  }
+}
+
+const validateForm = () => {
+  formErrors.value = {}
+  
+  // Validate all fields
+  validateField('name')
+  validateField('email')
+  validateField('phone')
+  validateField('credit_limit')
+
+  return Object.keys(formErrors.value).length === 0
+}
+
 const handleSave = async () => {
+  // Clear previous errors
+  formErrors.value = {}
+
+  // Client-side validation
+  if (!validateForm()) {
+    return
+  }
+
+  // Check HTML5 validation
+  if (formRef.value && !formRef.value.checkValidity()) {
+    formRef.value.reportValidity()
+    return
+  }
+
   try {
     if (isEditing.value) {
       await customerStore.updateCustomer(selectedCustomer.value.id, formData.value)
@@ -323,7 +433,18 @@ const handleSave = async () => {
     await fetchCustomers()
   } catch (error) {
     console.error('Error saving customer:', error)
-    // Error is handled by store and displayed in ErrorAlert
+    
+    // Handle validation errors from backend
+    if (error.response?.data?.details) {
+      const details = error.response.data.details
+      if (typeof details === 'object') {
+        formErrors.value = details
+      } else {
+        formErrors.value = { _general: details }
+      }
+    } else if (error.response?.data?.error) {
+      formErrors.value = { _general: error.response.data.error }
+    }
   }
 }
 
@@ -350,5 +471,6 @@ const resetForm = () => {
     opening_balance: 0.00,
     credit_limit: 0.00
   }
+  formErrors.value = {}
 }
 </script>
