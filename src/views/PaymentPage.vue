@@ -312,16 +312,34 @@ const handleSubmit = async (data, paymentId) => {
       alert('Payment updated successfully')
     } else {
       // Create new payment
+      let response
       if (activeTab.value === 'customer') {
-        await paymentStore.createCustomerPayment(data)
+        response = await paymentStore.createCustomerPayment(data)
       } else {
-        await paymentStore.createSupplierPayment(data)
+        response = await paymentStore.createSupplierPayment(data)
       }
-      alert('Payment created successfully')
+      
+      // Show FIFO information if available
+      if (response?.data?.applied_to_invoices && response.data.applied_to_invoices.length > 0) {
+        const appliedInvoices = response.data.applied_to_invoices
+        let message = `Payment of ৳${formatCurrency(data.amount)} applied using FIFO:\n\n`
+        
+        appliedInvoices.forEach((item, index) => {
+          message += `${index + 1}. Invoice ${item.invoice_number || `#${item.invoice_id}`}: ৳${formatCurrency(item.applied_amount)}\n`
+        })
+        
+        if (appliedInvoices.length > 1) {
+          message += `\nNote: Payment was applied to multiple invoices in FIFO order (oldest first).`
+        }
+        
+        alert(message)
+      } else {
+        alert('Payment created successfully')
+      }
     }
     loadPayments()
   } catch (error) {
-    alert('Failed to save payment: ' + (error.response?.data?.error || error.message))
+    alert('Failed to save payment: ' + (error.response?.data?.error || error.response?.data?.details || error.message))
   }
 }
 

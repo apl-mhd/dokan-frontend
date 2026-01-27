@@ -53,7 +53,7 @@
               <div class="col-md-6">
                 <label class="form-label">Payment Method <span class="text-danger">*</span></label>
                 <select v-model="form.payment_method" class="form-select" required>
-                  <option value="cash">💵 Cash</option>
+                  <option value="cash">💵 Cash (FIFO)</option>
                   <option value="bank">🏦 Bank Transfer</option>
                   <option value="bkash">📱 bKash</option>
                   <option value="nagad">📱 Nagad</option>
@@ -63,6 +63,10 @@
                   <option value="cheque">📝 Cheque</option>
                   <option value="others">📋 Others</option>
                 </select>
+                <div v-if="form.payment_method === 'cash' && form.status === 'completed'" class="form-text text-info">
+                  <i class="bi bi-info-circle me-1"></i>
+                  Cash payments will be automatically applied using FIFO (oldest invoices first)
+                </div>
               </div>
 
               <!-- Amount -->

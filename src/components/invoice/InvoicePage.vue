@@ -694,11 +694,16 @@
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Take Payment (Cash)</h5>
+            <h5 class="modal-title">Take Payment (Cash - FIFO)</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
             <div v-if="paymentInvoice">
+              <div class="alert alert-info mb-3">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>FIFO Payment System:</strong> Payment will be applied to this invoice first, then to other unpaid invoices in chronological order (oldest first).
+              </div>
+              
               <p class="mb-3">
                 <strong>Invoice:</strong> {{ paymentInvoice.invoice_number || `#${paymentInvoice.id}` }}<br>
                 <strong>{{ config.entityLabel }}:</strong> {{ paymentInvoice[config.entityNameField] || '-' }}<br>
@@ -716,7 +721,9 @@
                   <span class="input-group-text">৳</span>
                   <input v-model.number="paymentAmount" type="number" min="0.01" step="0.01" class="form-control text-end" />
                 </div>
-                <div class="form-text">Cash only for now.</div>
+                <div class="form-text">
+                  <strong>Note:</strong> If payment exceeds this invoice's due amount, the remaining amount will be automatically applied to other unpaid invoices using FIFO (oldest first).
+                </div>
               </div>
             </div>
           </div>
@@ -724,7 +731,7 @@
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             <button type="button" class="btn btn-primary" @click="handleSavePayment" :disabled="savingPayment || !paymentAmount || paymentAmount <= 0">
               <span v-if="savingPayment" class="spinner-border spinner-border-sm me-2"></span>
-              Take Payment
+              Apply Payment (FIFO)
             </button>
           </div>
         </div>
@@ -1379,9 +1386,27 @@ const handleSavePayment = async () => {
         ? `/sales/${paymentInvoice.value.id}/take-payment/`
         : `/purchases/${paymentInvoice.value.id}/take-payment/`
 
-    await api.post(endpoint, {
+    const response = await api.post(endpoint, {
       amount: paymentAmount.value
     })
+
+    // Show FIFO payment application results
+    if (response.data.applied_to_invoices && response.data.applied_to_invoices.length > 0) {
+      const appliedInvoices = response.data.applied_to_invoices
+      let message = `Payment of ৳${formatCurrency(paymentAmount.value)} applied using FIFO:\n\n`
+      
+      appliedInvoices.forEach((item, index) => {
+        message += `${index + 1}. Invoice ${item.invoice_number || `#${item.invoice_id}`}: ৳${formatCurrency(item.applied_amount)}\n`
+      })
+      
+      if (appliedInvoices.length > 1) {
+        message += `\nNote: Payment was applied to multiple invoices in FIFO order (oldest first).`
+      }
+      
+      alert(message)
+    } else {
+      alert('Payment applied successfully')
+    }
 
     paymentModalInstance?.hide()
     paymentInvoice.value = null
@@ -1390,7 +1415,8 @@ const handleSavePayment = async () => {
     await fetchInvoices()
   } catch (error) {
     console.error('Error taking payment:', error)
-    alert('Failed to take payment. Please try again.')
+    const errorMsg = error.response?.data?.error || error.response?.data?.details || 'Failed to take payment. Please try again.'
+    alert(errorMsg)
   } finally {
     savingPayment.value = false
   }

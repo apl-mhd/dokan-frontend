@@ -96,15 +96,38 @@
               </div>
             </div>
 
-            <!-- Linked Invoice -->
-            <div v-if="payment.sale_invoice_number || payment.purchase_invoice_number" class="col-12">
+            <!-- Linked Invoice(s) -->
+            <div v-if="payment.sale_invoice_number || payment.purchase_invoice_number || (payment.applied_to_invoices && payment.applied_to_invoices.length > 0)" class="col-12">
               <div class="card">
                 <div class="card-header">
-                  <h6 class="mb-0">Linked Invoice</h6>
+                  <h6 class="mb-0">
+                    <i class="bi bi-receipt me-2"></i>
+                    {{ payment.applied_to_invoices && payment.applied_to_invoices.length > 1 ? 'Applied Invoices (FIFO)' : 'Linked Invoice' }}
+                  </h6>
                 </div>
                 <div class="card-body">
-                  <div class="fw-bold">
+                  <!-- Single invoice (backward compatibility) -->
+                  <div v-if="payment.sale_invoice_number || payment.purchase_invoice_number" class="fw-bold">
                     {{ payment.sale_invoice_number || payment.purchase_invoice_number }}
+                  </div>
+                  
+                  <!-- Multiple invoices (FIFO) -->
+                  <div v-if="payment.applied_to_invoices && payment.applied_to_invoices.length > 0">
+                    <div class="alert alert-info mb-2">
+                      <small><i class="bi bi-info-circle me-1"></i>Payment was applied using FIFO (First In First Out) method</small>
+                    </div>
+                    <div class="list-group">
+                      <div 
+                        v-for="(invoice, index) in payment.applied_to_invoices" 
+                        :key="index"
+                        class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                          <strong>{{ invoice.invoice_number || `#${invoice.invoice_id}` }}</strong>
+                          <small class="text-muted d-block">Applied: ৳{{ formatCurrency(invoice.applied_amount) }}</small>
+                        </div>
+                        <span class="badge bg-primary">{{ index + 1 }}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

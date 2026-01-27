@@ -65,8 +65,15 @@ export const usePaymentStore = defineStore('payment', () => {
     error.value = null
     try {
       const response = await paymentApi.createCustomerPayment(data)
+      // If FIFO was applied, multiple payments may have been created
+      // We'll refresh the list to show all payments
       if (response.data.data) {
         customerPayments.value.unshift(response.data.data)
+      }
+      // If FIFO created multiple payments, refresh the list
+      if (response.data.applied_to_invoices && response.data.applied_to_invoices.length > 0) {
+        // Refresh payments list to show all created payments
+        await fetchCustomerPayments()
       }
       return response
     } catch (err) {
@@ -164,8 +171,15 @@ export const usePaymentStore = defineStore('payment', () => {
     error.value = null
     try {
       const response = await paymentApi.createSupplierPayment(data)
+      // If FIFO was applied, multiple payments may have been created
+      // We'll refresh the list to show all payments
       if (response.data.data) {
         supplierPayments.value.unshift(response.data.data)
+      }
+      // If FIFO created multiple payments, refresh the list
+      if (response.data.applied_to_invoices && response.data.applied_to_invoices.length > 0) {
+        // Refresh payments list to show all created payments
+        await fetchSupplierPayments()
       }
       return response
     } catch (err) {
