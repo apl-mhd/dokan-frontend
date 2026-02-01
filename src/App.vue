@@ -147,6 +147,7 @@ const handleLogout = () => {
         </button>
       </div>
 
+      <div class="sidebar-nav-wrapper">
       <ul class="nav flex-column gap-2 px-3 pb-3">
 
         <li class="nav-item">
@@ -154,6 +155,34 @@ const handleLogout = () => {
             <i class="bi bi-speedometer2"></i>
             <span v-show="sidebarOpen" class="ms-2">Dashboard</span>
           </router-link>
+        </li>
+
+        <!-- Contacts Parent Menu -->
+        <li class="nav-item">
+          <div class="nav-link parent-menu" :class="{ 'active': isContactsSection }" @click="toggleContactsMenu" :title="sidebarOpen ? '' : 'Contacts'">
+            <i class="bi bi-person-lines-fill"></i>
+            <span v-show="sidebarOpen" class="ms-2 flex-grow-1">Contacts</span>
+            <i v-show="sidebarOpen" class="bi chevron-icon ms-auto" :class="contactsMenuOpen ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
+          </div>
+
+          <!-- Contacts Submenu -->
+          <div class="submenu-collapse" :class="{ 'show': contactsMenuOpen && sidebarOpen }">
+            <ul class="nav flex-column submenu">
+              <li class="nav-item">
+                <router-link to="/supplier" class="nav-link submenu-link" :class="{ 'active': $route.path === '/supplier' }">
+                  <i class="bi bi-people"></i>
+                  <span class="ms-2">Suppliers</span>
+                </router-link>
+              </li>
+
+              <li class="nav-item">
+                <router-link to="/customer" class="nav-link submenu-link" :class="{ 'active': $route.path === '/customer' }">
+                  <i class="bi bi-person-circle"></i>
+                  <span class="ms-2">Customers</span>
+                </router-link>
+              </li>
+            </ul>
+          </div>
         </li>
 
         <!-- Purchase Parent Menu -->
@@ -212,6 +241,55 @@ const handleLogout = () => {
           </div>
         </li>
 
+        <li class="nav-item">
+          <router-link to="/ledger" class="nav-link" :class="{ active: $route.path === '/ledger' }" :title="sidebarOpen ? '' : 'Ledger'">
+            <i class="bi bi-journal-text"></i>
+            <span v-show="sidebarOpen" class="ms-2">Ledger</span>
+          </router-link>
+        </li>
+
+        <!-- Payment Parent Menu -->
+        <li class="nav-item">
+          <div class="nav-link parent-menu" :class="{ 'active': isPaymentSection }" @click="togglePaymentMenu" :title="sidebarOpen ? '' : 'Payment'">
+            <i class="bi bi-credit-card"></i>
+            <span v-show="sidebarOpen" class="ms-2 flex-grow-1">Payment</span>
+            <i v-show="sidebarOpen" class="bi chevron-icon ms-auto" :class="paymentMenuOpen ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
+          </div>
+
+          <!-- Payment Submenu -->
+          <div class="submenu-collapse" :class="{ 'show': paymentMenuOpen && sidebarOpen }">
+            <ul class="nav flex-column submenu">
+              <li class="nav-item">
+                <router-link to="/payment" class="nav-link submenu-link" :class="{ 'active': $route.path === '/payment' }">
+                  <i class="bi bi-cash-stack"></i>
+                  <span class="ms-2">Payments</span>
+                </router-link>
+              </li>
+
+              <li class="nav-item">
+                <router-link to="/refund" class="nav-link submenu-link" :class="{ 'active': $route.path === '/refund' }">
+                  <i class="bi bi-arrow-repeat"></i>
+                  <span class="ms-2">Refunds</span>
+                </router-link>
+              </li>
+            </ul>
+          </div>
+        </li>
+
+        <li class="nav-item">
+          <router-link to="/stock" class="nav-link" :class="{ active: $route.path === '/stock' }" :title="sidebarOpen ? '' : 'Stock'">
+            <i class="bi bi-boxes"></i>
+            <span v-show="sidebarOpen" class="ms-2">Stock</span>
+          </router-link>
+        </li>
+
+        <li class="nav-item">
+          <router-link to="/expense" class="nav-link" :class="{ active: $route.path === '/expense' }" :title="sidebarOpen ? '' : 'Expense'">
+            <i class="bi bi-wallet2"></i>
+            <span v-show="sidebarOpen" class="ms-2">Expense</span>
+          </router-link>
+        </li>
+
         <!-- Products Parent Menu -->
         <li class="nav-item">
           <div class="nav-link parent-menu" :class="{ 'active': isProductsSection }" @click="toggleProductsMenu" :title="sidebarOpen ? '' : 'Products'">
@@ -248,90 +326,14 @@ const handleLogout = () => {
         </li>
 
         <li class="nav-item">
-          <router-link to="/stock" class="nav-link" :class="{ active: $route.path === '/stock' }" :title="sidebarOpen ? '' : 'Stock'">
-            <i class="bi bi-boxes"></i>
-            <span v-show="sidebarOpen" class="ms-2">Stock</span>
-          </router-link>
-        </li>
-
-        <!-- Contacts Parent Menu -->
-        <li class="nav-item">
-          <div class="nav-link parent-menu" :class="{ 'active': isContactsSection }" @click="toggleContactsMenu" :title="sidebarOpen ? '' : 'Contacts'">
-            <i class="bi bi-person-lines-fill"></i>
-            <span v-show="sidebarOpen" class="ms-2 flex-grow-1">Contacts</span>
-            <i v-show="sidebarOpen" class="bi chevron-icon ms-auto" :class="contactsMenuOpen ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
-          </div>
-
-          <!-- Contacts Submenu -->
-          <div class="submenu-collapse" :class="{ 'show': contactsMenuOpen && sidebarOpen }">
-            <ul class="nav flex-column submenu">
-              <li class="nav-item">
-                <router-link to="/supplier" class="nav-link submenu-link" :class="{ 'active': $route.path === '/supplier' }">
-                  <i class="bi bi-people"></i>
-                  <span class="ms-2">Suppliers</span>
-                </router-link>
-              </li>
-
-              <li class="nav-item">
-                <router-link to="/customer" class="nav-link submenu-link" :class="{ 'active': $route.path === '/customer' }">
-                  <i class="bi bi-person-circle"></i>
-                  <span class="ms-2">Customers</span>
-                </router-link>
-              </li>
-            </ul>
-          </div>
-        </li>
-
-        <li class="nav-item">
           <router-link to="/warehouse" class="nav-link" :class="{ active: $route.path === '/warehouse' }" :title="sidebarOpen ? '' : 'Warehouse'">
             <i class="bi bi-building"></i>
             <span v-show="sidebarOpen" class="ms-2">Warehouse</span>
           </router-link>
         </li>
 
-        <!-- Payment Parent Menu -->
-        <li class="nav-item">
-          <div class="nav-link parent-menu" :class="{ 'active': isPaymentSection }" @click="togglePaymentMenu" :title="sidebarOpen ? '' : 'Payment'">
-            <i class="bi bi-credit-card"></i>
-            <span v-show="sidebarOpen" class="ms-2 flex-grow-1">Payment</span>
-            <i v-show="sidebarOpen" class="bi chevron-icon ms-auto" :class="paymentMenuOpen ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
-          </div>
-
-          <!-- Payment Submenu -->
-          <div class="submenu-collapse" :class="{ 'show': paymentMenuOpen && sidebarOpen }">
-            <ul class="nav flex-column submenu">
-              <li class="nav-item">
-                <router-link to="/payment" class="nav-link submenu-link" :class="{ 'active': $route.path === '/payment' }">
-                  <i class="bi bi-cash-stack"></i>
-                  <span class="ms-2">Payments</span>
-                </router-link>
-              </li>
-
-              <li class="nav-item">
-                <router-link to="/refund" class="nav-link submenu-link" :class="{ 'active': $route.path === '/refund' }">
-                  <i class="bi bi-arrow-repeat"></i>
-                  <span class="ms-2">Refunds</span>
-                </router-link>
-              </li>
-            </ul>
-          </div>
-        </li>
-
-        <li class="nav-item">
-          <router-link to="/ledger" class="nav-link" :class="{ active: $route.path === '/ledger' }" :title="sidebarOpen ? '' : 'Ledger'">
-            <i class="bi bi-journal-text"></i>
-            <span v-show="sidebarOpen" class="ms-2">Ledger</span>
-          </router-link>
-        </li>
-
-        <li class="nav-item">
-          <router-link to="/expense" class="nav-link" :class="{ active: $route.path === '/expense' }" :title="sidebarOpen ? '' : 'Expense'">
-            <i class="bi bi-wallet2"></i>
-            <span v-show="sidebarOpen" class="ms-2">Expense</span>
-          </router-link>
-        </li>
-
       </ul>
+      </div>
     </aside>
 
     <!-- Main Content Area -->
@@ -376,10 +378,44 @@ const handleLogout = () => {
   position: fixed;
   left: 0;
   top: 0;
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   transition: width 0.3s ease;
   z-index: 100;
+  overflow: hidden;
+}
+
+.sidebar-nav-wrapper {
+  flex: 1 1 auto;
+  overflow-y: auto;
   overflow-x: hidden;
+  min-height: 0;
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+/* WebKit (Chrome, Safari, Edge) - beautified scrollbar */
+.sidebar-nav-wrapper::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-nav-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-nav-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 3px;
+}
+
+.sidebar-nav-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.sidebar-nav-wrapper::-webkit-scrollbar-thumb:active {
+  background: rgba(255, 255, 255, 0.5);
 }
 
 /* Sidebar open state */
