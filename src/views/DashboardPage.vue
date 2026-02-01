@@ -98,35 +98,81 @@
               <div v-if="combinedPeriod === 'custom'" class="d-flex gap-2 align-items-center">
                 <div class="d-flex align-items-center gap-2">
                   <label class="mb-0 small">From:</label>
-                  <input 
-                    type="date" 
-                    v-model="combinedDateFrom" 
-                    class="form-control form-control-sm"
-                    style="width: auto;"
-                    @change="updateCombinedCustomDateRange"
-                  />
+                  <input type="date" v-model="combinedDateFrom" class="form-control form-control-sm" style="width: auto;" @change="updateCombinedCustomDateRange" />
                 </div>
                 <div class="d-flex align-items-center gap-2">
                   <label class="mb-0 small">To:</label>
-                  <input 
-                    type="date" 
-                    v-model="combinedDateTo" 
-                    class="form-control form-control-sm"
-                    style="width: auto;"
-                    @change="updateCombinedCustomDateRange"
-                  />
+                  <input type="date" v-model="combinedDateTo" class="form-control form-control-sm" style="width: auto;" @change="updateCombinedCustomDateRange" />
                 </div>
-                <button 
-                  class="btn btn-sm btn-outline-secondary" 
-                  @click="applyCombinedDateRange"
-                  :disabled="!combinedDateFrom || !combinedDateTo"
-                >
+                <button class="btn btn-sm btn-outline-secondary" @click="applyCombinedDateRange" :disabled="!combinedDateFrom || !combinedDateTo">
                   Apply
                 </button>
               </div>
             </div>
             <div class="card-body">
               <Line :key="`sales-combined-${combinedPeriod}`" :data="combinedChartData" :options="combinedChartOptions" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Product Sales (Base Quantity) Chart - from Stock Movement -->
+      <div class="row mb-4">
+        <div class="col-md-12">
+          <div class="card shadow-sm">
+            <div class="card-header bg-light">
+              <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                <h5 class="mb-0">
+                  <i class="bi bi-box-seam me-2"></i>Product Sales (Base Quantity)
+                </h5>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <label class="mb-0 small">Product:</label>
+                  <select v-model="selectedProductId" class="form-select form-select-sm" style="width: 180px; flex: 0 0 auto;" @change="applyProductFilter">
+                    <option value="">Select a product</option>
+                    <option v-for="p in productStore.products" :key="p.id" :value="p.id">
+                      {{ p.name }}
+                    </option>
+                  </select>
+                  <template v-if="selectedProductId">
+                    <label class="mb-0 small">Unit:</label>
+                    <select v-model="selectedProductUnitId" class="form-select form-select-sm" style="width: 120px; flex: 0 0 auto;">
+                      <option v-for="u in productUnitsForSelectedProduct" :key="u.id" :value="u.id">{{ u.name }}</option>
+                    </select>
+                  </template>
+                  <ul class="nav nav-tabs card-header-tabs mb-0">
+                    <li class="nav-item">
+                      <a href="#" class="nav-link" :class="{ active: productSalesPeriod === 'weekly' }" @click.stop.prevent="updateProductSalesPeriod('weekly')">Weekly</a>
+                    </li>
+                    <li class="nav-item">
+                      <a href="#" class="nav-link" :class="{ active: productSalesPeriod === 'monthly' }" @click.stop.prevent="updateProductSalesPeriod('monthly')">Monthly</a>
+                    </li>
+                    <li class="nav-item">
+                      <a href="#" class="nav-link" :class="{ active: productSalesPeriod === 'custom' }" @click.stop.prevent="productSalesPeriod = 'custom'">Custom Range</a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div v-if="productSalesPeriod === 'custom'" class="d-flex gap-2 align-items-center flex-wrap">
+                <div class="d-flex align-items-center gap-2">
+                  <label class="mb-0 small">From:</label>
+                  <input type="date" v-model="productSalesDateFrom" class="form-control form-control-sm" style="width: auto;" />
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <label class="mb-0 small">To:</label>
+                  <input type="date" v-model="productSalesDateTo" class="form-control form-control-sm" style="width: auto;" />
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" @click="applyProductSalesDateRange" :disabled="!productSalesDateFrom || !productSalesDateTo">Apply</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div v-if="!selectedProductId" class="text-center text-muted py-5">
+                <i class="bi bi-graph-up" style="font-size: 3rem;"></i>
+                <p class="mt-2 mb-0">Select a product to view sales graph</p>
+              </div>
+              <div v-else>
+                <h6 class="text-muted mb-2">Quantity Sold Over Time</h6>
+                <Line :data="productSalesTrendChartData" :options="productSalesTrendChartOptions" />
+              </div>
             </div>
           </div>
         </div>
@@ -215,29 +261,13 @@
               <div v-if="purchaseCombinedPeriod === 'custom'" class="d-flex gap-2 align-items-center">
                 <div class="d-flex align-items-center gap-2">
                   <label class="mb-0 small">From:</label>
-                  <input 
-                    type="date" 
-                    v-model="purchaseCombinedDateFrom" 
-                    class="form-control form-control-sm"
-                    style="width: auto;"
-                    @change="updatePurchaseCombinedCustomDateRange"
-                  />
+                  <input type="date" v-model="purchaseCombinedDateFrom" class="form-control form-control-sm" style="width: auto;" @change="updatePurchaseCombinedCustomDateRange" />
                 </div>
                 <div class="d-flex align-items-center gap-2">
                   <label class="mb-0 small">To:</label>
-                  <input 
-                    type="date" 
-                    v-model="purchaseCombinedDateTo" 
-                    class="form-control form-control-sm"
-                    style="width: auto;"
-                    @change="updatePurchaseCombinedCustomDateRange"
-                  />
+                  <input type="date" v-model="purchaseCombinedDateTo" class="form-control form-control-sm" style="width: auto;" @change="updatePurchaseCombinedCustomDateRange" />
                 </div>
-                <button 
-                  class="btn btn-sm btn-outline-secondary" 
-                  @click="applyPurchaseCombinedDateRange"
-                  :disabled="!purchaseCombinedDateFrom || !purchaseCombinedDateTo"
-                >
+                <button class="btn btn-sm btn-outline-secondary" @click="applyPurchaseCombinedDateRange" :disabled="!purchaseCombinedDateFrom || !purchaseCombinedDateTo">
                   Apply
                 </button>
               </div>
@@ -334,7 +364,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { Line } from 'vue-chartjs'
 import {
   Chart as ChartJS,
@@ -398,6 +428,11 @@ const combinedDateFrom = ref('')
 const combinedDateTo = ref('')
 const purchaseCombinedDateFrom = ref('')
 const purchaseCombinedDateTo = ref('')
+const selectedProductId = ref('')
+const selectedProductUnitId = ref(null)
+const productSalesPeriod = ref('weekly')
+const productSalesDateFrom = ref('')
+const productSalesDateTo = ref('')
 const stats = ref({
   sales: {
     today: { total: 0, count: 0 },
@@ -419,6 +454,10 @@ const stats = ref({
   supplier_payments: {
     trend: []
   },
+  product_sales: {
+    trend: [],
+    by_product: []
+  },
   low_stock: []
 })
 
@@ -439,6 +478,55 @@ const salesChartData = computed(() => {
         tension: 0.4
       }
     ]
+  }
+})
+
+// Product Sales Trend Chart Data (from stock movement - base quantity, converted to selected unit)
+const productSalesTrendChartData = computed(() => {
+  const trend = stats.value.product_sales?.trend || []
+  const unit = selectedProductUnit.value
+  const cf = unit ? parseFloat(unit.conversion_factor) || 1 : 1
+  // Convert from base to display: quantity / conversion_factor
+  const toDisplayQty = (baseQty) => (parseFloat(baseQty) || 0) / cf
+  return {
+    labels: trend.map(item => {
+      const date = new Date(item.date)
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }),
+    datasets: [
+      {
+        label: unit ? `Qty Sold (${unit.name})` : 'Qty Sold',
+        backgroundColor: 'rgba(102, 126, 234, 0.2)',
+        borderColor: 'rgba(102, 126, 234, 1)',
+        data: trend.map(item => toDisplayQty(item.quantity)),
+        tension: 0.4,
+        fill: true
+      }
+    ]
+  }
+})
+
+const productSalesTrendChartOptions = computed(() => {
+  const unit = selectedProductUnit.value
+  const unitName = unit ? unit.name : 'units'
+  return {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => `${ctx.parsed.y} ${unitName}`
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: { display: true, text: unitName },
+        ticks: { stepSize: 1 }
+      }
+    }
   }
 })
 
@@ -728,6 +816,14 @@ const fetchDashboardStats = async (periodOverride = null, dateFrom = null, dateT
     if (chartType) {
       params.chart_type = chartType
     }
+    if (selectedProductId.value) {
+      params.product_ids = String(selectedProductId.value)
+      params.product_sales_period = productSalesPeriod.value
+      if (productSalesPeriod.value === 'custom' && productSalesDateFrom.value && productSalesDateTo.value) {
+        params.product_sales_date_from = productSalesDateFrom.value
+        params.product_sales_date_to = productSalesDateTo.value
+      }
+    }
     
     const response = await api.get('/dashboard/stats/', { params })
     stats.value = response.data.data
@@ -737,6 +833,82 @@ const fetchDashboardStats = async (periodOverride = null, dateFrom = null, dateT
   } finally {
     loading.value = false
   }
+}
+
+// Product units for selected product (base + alternatives in same category)
+const productUnitsForSelectedProduct = computed(() => {
+  if (!selectedProductId.value) return []
+  const p = productStore.products.find(pr => pr.id === parseInt(selectedProductId.value))
+  if (!p) return []
+  if (p.base_unit && p.units && p.units.length) {
+    return p.units
+  }
+  if (p.base_unit) {
+    return [{
+      id: p.base_unit.id,
+      name: p.base_unit.name,
+      conversion_factor: p.base_unit.conversion_factor || '1',
+      is_base_unit: true
+    }]
+  }
+  return [{ id: 0, name: 'pcs', conversion_factor: '1', is_base_unit: true }]
+})
+
+const selectedProductUnit = computed(() => {
+  const units = productUnitsForSelectedProduct.value
+  const id = selectedProductUnitId.value
+  return units.find(u => u.id === id || String(u.id) === String(id)) || units[0]
+})
+
+watch(selectedProductId, (newId) => {
+  if (!newId) {
+    selectedProductUnitId.value = null
+    return
+  }
+  const units = productUnitsForSelectedProduct.value
+  const base = units.find(u => u.is_base_unit) || units[0]
+  selectedProductUnitId.value = base ? base.id : null
+}, { immediate: true })
+
+watch(productUnitsForSelectedProduct, (units) => {
+  if (!units.length || !selectedProductId.value) return
+  const current = selectedProductUnitId.value
+  const valid = units.some(u => u.id === current || String(u.id) === String(current))
+  if (!valid) {
+    const base = units.find(u => u.is_base_unit) || units[0]
+    selectedProductUnitId.value = base ? base.id : null
+  }
+})
+
+const applyProductFilter = async () => {
+  if (!selectedProductId.value) return
+  await fetchDashboardStats()
+  await nextTick()
+}
+
+const updateProductSalesPeriod = async (period) => {
+  if (productSalesPeriod.value === period) return
+  productSalesPeriod.value = period
+  if (period !== 'custom') {
+    productSalesDateFrom.value = ''
+    productSalesDateTo.value = ''
+  }
+  if (selectedProductId.value) {
+    await fetchDashboardStats()
+  }
+  await nextTick()
+}
+
+const applyProductSalesDateRange = async () => {
+  if (!productSalesDateFrom.value || !productSalesDateTo.value) return
+  if (new Date(productSalesDateFrom.value) > new Date(productSalesDateTo.value)) {
+    error.value = 'Start date must be before end date'
+    return
+  }
+  if (selectedProductId.value) {
+    await fetchDashboardStats()
+  }
+  await nextTick()
 }
 
 const updateSalesPeriod = (period) => {
