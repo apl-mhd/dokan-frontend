@@ -73,27 +73,36 @@
         <div class="col-md-12">
           <div class="card shadow-sm">
             <div class="card-header bg-light">
-              <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
                 <h5 class="mb-0">
                   <i class="bi bi-graph-up-arrow me-2"></i>Sales vs Dues vs Payments
                 </h5>
-                <ul class="nav nav-tabs card-header-tabs">
-                  <li class="nav-item">
-                    <a href="#" class="nav-link" :class="{ active: combinedPeriod === 'weekly' }" @click.stop.prevent="updateCombinedPeriod('weekly')">
-                      Weekly
-                    </a>
-                  </li>
-                  <li class="nav-item">
-                    <a href="#" class="nav-link" :class="{ active: combinedPeriod === 'monthly' }" @click.stop.prevent="updateCombinedPeriod('monthly')">
-                      Monthly
-                    </a>
-                  </li>
-                  <li class="nav-item">
-                    <a href="#" class="nav-link" :class="{ active: combinedPeriod === 'custom' }" @click.stop.prevent="combinedPeriod = 'custom'">
-                      Custom Range
-                    </a>
-                  </li>
-                </ul>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <label class="mb-0 small">Customer:</label>
+                  <select v-model="combinedCustomerId" class="form-select form-select-sm" style="width: 180px; flex: 0 0 auto;" @change="applyCombinedCustomerFilter">
+                    <option value="">All customers</option>
+                    <option v-for="c in customerStore.customers" :key="c.id" :value="c.id">
+                      {{ c.name }}
+                    </option>
+                  </select>
+                  <ul class="nav nav-tabs card-header-tabs mb-0">
+                    <li class="nav-item">
+                      <a href="#" class="nav-link" :class="{ active: combinedPeriod === 'weekly' }" @click.stop.prevent="updateCombinedPeriod('weekly')">
+                        Weekly
+                      </a>
+                    </li>
+                    <li class="nav-item">
+                      <a href="#" class="nav-link" :class="{ active: combinedPeriod === 'monthly' }" @click.stop.prevent="updateCombinedPeriod('monthly')">
+                        Monthly
+                      </a>
+                    </li>
+                    <li class="nav-item">
+                      <a href="#" class="nav-link" :class="{ active: combinedPeriod === 'custom' }" @click.stop.prevent="combinedPeriod = 'custom'">
+                        Custom Range
+                      </a>
+                    </li>
+                  </ul>
+                </div>
               </div>
               <div v-if="combinedPeriod === 'custom'" class="d-flex gap-2 align-items-center">
                 <div class="d-flex align-items-center gap-2">
@@ -110,7 +119,7 @@
               </div>
             </div>
             <div class="card-body">
-              <Line :key="`sales-combined-${combinedPeriod}`" :data="combinedChartData" :options="combinedChartOptions" />
+              <Line :key="`sales-combined-${combinedPeriod}-${combinedCustomerId || 'all'}`" :data="combinedChartData" :options="combinedChartOptions" />
             </div>
           </div>
         </div>
@@ -172,6 +181,62 @@
               <div v-else>
                 <h6 class="text-muted mb-2">Quantity Sold Over Time</h6>
                 <Line :data="productSalesTrendChartData" :options="productSalesTrendChartOptions" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Product Sales (Amount) Chart -->
+      <div class="row mb-4">
+        <div class="col-md-12">
+          <div class="card shadow-sm">
+            <div class="card-header bg-light">
+              <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                <h5 class="mb-0">
+                  <i class="bi bi-currency-dollar me-2"></i>Product Sales (Amount)
+                </h5>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <label class="mb-0 small">Product:</label>
+                  <select v-model="selectedProductId" class="form-select form-select-sm" style="width: 180px; flex: 0 0 auto;" @change="applyProductFilter">
+                    <option value="">Select a product</option>
+                    <option v-for="p in productStore.products" :key="p.id" :value="p.id">
+                      {{ p.name }}
+                    </option>
+                  </select>
+                  <ul class="nav nav-tabs card-header-tabs mb-0">
+                    <li class="nav-item">
+                      <a href="#" class="nav-link" :class="{ active: productSalesPeriod === 'weekly' }" @click.stop.prevent="updateProductSalesPeriod('weekly')">Weekly</a>
+                    </li>
+                    <li class="nav-item">
+                      <a href="#" class="nav-link" :class="{ active: productSalesPeriod === 'monthly' }" @click.stop.prevent="updateProductSalesPeriod('monthly')">Monthly</a>
+                    </li>
+                    <li class="nav-item">
+                      <a href="#" class="nav-link" :class="{ active: productSalesPeriod === 'custom' }" @click.stop.prevent="productSalesPeriod = 'custom'">Custom Range</a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div v-if="productSalesPeriod === 'custom'" class="d-flex gap-2 align-items-center flex-wrap">
+                <div class="d-flex align-items-center gap-2">
+                  <label class="mb-0 small">From:</label>
+                  <input type="date" v-model="productSalesDateFrom" class="form-control form-control-sm" style="width: auto;" />
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <label class="mb-0 small">To:</label>
+                  <input type="date" v-model="productSalesDateTo" class="form-control form-control-sm" style="width: auto;" />
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" @click="applyProductSalesDateRange" :disabled="!productSalesDateFrom || !productSalesDateTo">Apply</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div v-if="!selectedProductId" class="text-center text-muted py-5">
+                <i class="bi bi-currency-dollar" style="font-size: 3rem;"></i>
+                <p class="mt-2 mb-0">Select a product to view sales amount graph</p>
+              </div>
+              <div v-else>
+                <h6 class="text-muted mb-2">Sales Amount Over Time (X: Date, Y: Amount ৳)</h6>
+                <Line :data="productSalesAmountChartData" :options="productSalesAmountChartOptions" />
               </div>
             </div>
           </div>
@@ -423,6 +488,7 @@ const paymentPeriod = ref('weekly')
 const duesTab = ref('sales')
 const duesPeriod = ref('weekly')
 const combinedPeriod = ref('weekly')
+const combinedCustomerId = ref('')
 const purchaseCombinedPeriod = ref('weekly')
 const combinedDateFrom = ref('')
 const combinedDateTo = ref('')
@@ -529,6 +595,52 @@ const productSalesTrendChartOptions = computed(() => {
     }
   }
 })
+
+// Product Sales Amount Chart Data (X: date, Y: amount)
+const productSalesAmountChartData = computed(() => {
+  const trend = stats.value.product_sales?.amount_trend || []
+  return {
+    labels: trend.map(item => {
+      const date = new Date(item.date)
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }),
+    datasets: [
+      {
+        label: 'Sales Amount (৳)',
+        backgroundColor: 'rgba(25, 135, 84, 0.2)',
+        borderColor: 'rgba(25, 135, 84, 1)',
+        data: trend.map(item => item.amount),
+        tension: 0.4,
+        fill: true
+      }
+    ]
+  }
+})
+
+const productSalesAmountChartOptions = computed(() => ({
+  responsive: true,
+  maintainAspectRatio: true,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      callbacks: {
+        label: (ctx) => formatCurrency(ctx.parsed.y)
+      }
+    }
+  },
+  scales: {
+    x: {
+      title: { display: true, text: 'Date' }
+    },
+    y: {
+      beginAtZero: true,
+      title: { display: true, text: 'Amount (৳)' },
+      ticks: {
+        callback: (value) => '৳' + value.toLocaleString()
+      }
+    }
+  }
+}))
 
 const purchaseChartData = computed(() => {
   const trend = stats.value.purchases.trend || []
@@ -824,7 +936,10 @@ const fetchDashboardStats = async (periodOverride = null, dateFrom = null, dateT
         params.product_sales_date_to = productSalesDateTo.value
       }
     }
-    
+    if (combinedCustomerId.value) {
+      params.customer_id = combinedCustomerId.value
+    }
+
     const response = await api.get('/dashboard/stats/', { params })
     stats.value = response.data.data
   } catch (err) {
@@ -973,6 +1088,16 @@ const updateCombinedCustomDateRange = () => {
   // This is called when date inputs change, but we wait for Apply button
 }
 
+const applyCombinedCustomerFilter = async () => {
+  const period = combinedPeriod.value
+  if (period === 'custom' && combinedDateFrom.value && combinedDateTo.value) {
+    await fetchDashboardStats('custom', combinedDateFrom.value, combinedDateTo.value)
+  } else {
+    await fetchDashboardStats(period)
+  }
+  await nextTick()
+}
+
 const applyCombinedDateRange = async () => {
   if (!combinedDateFrom.value || !combinedDateTo.value) return
   
@@ -1027,6 +1152,8 @@ const switchDuesTab = (tab) => {
 }
 
 const refreshDashboard = async () => {
+  // Fetch customers first so dropdown is populated before stats (stats may use customer filter)
+  await customerStore.fetchCustomers()
   await Promise.all([
     fetchDashboardStats(),
     productStore.fetchProducts(),
@@ -1034,7 +1161,6 @@ const refreshDashboard = async () => {
     saleStore.fetchSales(),
     stockStore.fetchStocks(),
     supplierStore.fetchSuppliers(),
-    customerStore.fetchCustomers(),
     warehouseStore.fetchWarehouses()
   ])
 }
