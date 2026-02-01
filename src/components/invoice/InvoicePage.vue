@@ -73,7 +73,7 @@
               <button v-if="invoice.status !== config.finalStatus" class="btn btn-sm btn-outline-primary me-2" @click="handleEdit(invoice)" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-sm btn-outline-danger" @click="handleDelete(invoice)" title="Delete">
+              <button v-if="invoice.status == 'pending'" class="btn btn-sm btn-outline-danger" @click="handleDelete(invoice)" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </td>
@@ -1281,9 +1281,12 @@ const removeItem = (index) => {
 }
 
 const resetForm = () => {
+  const warehouses = warehouseStore.warehouses || []
+  const singleWarehouseId = warehouses.length === 1 ? warehouses[0].id : null
+
   formData.value = {
     [config.entityField]: '',
-    warehouse: '',
+    warehouse: singleWarehouseId || '',
     invoice_date: new Date().toISOString().split('T')[0],
     status: 'pending',
     sub_total: 0.00,
