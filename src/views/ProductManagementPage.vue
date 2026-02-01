@@ -19,12 +19,7 @@
       <div class="card-body">
         <div class="row g-3">
           <div class="col-md-4">
-            <input
-              v-model="searchQuery"
-              type="text"
-              class="form-control"
-              placeholder="Search products..."
-            />
+            <input v-model="searchQuery" type="text" class="form-control" placeholder="Search products..." />
           </div>
           <div class="col-md-3">
             <select v-model="filterCategory" class="form-select">
@@ -93,7 +88,7 @@
                 </td>
                 <td>{{ product.base_unit_name || '-' }}</td>
                 <td>{{ formatCurrency(product.purchase_price) }}</td>
-                <td>{{ formatCurrency(product.sale_price) }}</td>
+                <td>{{ formatCurrency(product.selling_price ?? product.sale_price) }}</td>
                 <td>
                   <span :class="getStockBadgeClass(product.total_stock)">
                     {{ product.total_stock || 0 }}
@@ -144,24 +139,12 @@
               <div class="row">
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Product Name <span class="text-danger">*</span></label>
-                  <input
-                    v-model="formData.name"
-                    type="text"
-                    class="form-control"
-                    placeholder="Enter product name"
-                    required
-                  />
+                  <input v-model="formData.name" type="text" class="form-control" placeholder="Enter product name" required />
                 </div>
 
                 <div class="col-md-6 mb-3">
                   <label class="form-label">SKU <span class="text-danger">*</span></label>
-                  <input
-                    v-model="formData.sku"
-                    type="text"
-                    class="form-control"
-                    placeholder="Enter SKU"
-                    required
-                  />
+                  <input v-model="formData.sku" type="text" class="form-control" placeholder="Enter SKU" required />
                 </div>
               </div>
 
@@ -190,46 +173,22 @@
               <div class="row">
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Purchase Price <span class="text-danger">*</span></label>
-                  <input
-                    v-model.number="formData.purchase_price"
-                    type="number"
-                    step="0.01"
-                    class="form-control"
-                    placeholder="0.00"
-                    required
-                  />
+                  <input v-model.number="formData.purchase_price" type="number" step="0.01" class="form-control" placeholder="0.00" required />
                 </div>
 
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Sale Price <span class="text-danger">*</span></label>
-                  <input
-                    v-model.number="formData.sale_price"
-                    type="number"
-                    step="0.01"
-                    class="form-control"
-                    placeholder="0.00"
-                    required
-                  />
+                  <input v-model.number="formData.sale_price" type="number" step="0.01" class="form-control" placeholder="0.00" required />
                 </div>
               </div>
 
               <div class="mb-3">
                 <label class="form-label">Description</label>
-                <textarea
-                  v-model="formData.description"
-                  class="form-control"
-                  rows="3"
-                  placeholder="Enter product description"
-                ></textarea>
+                <textarea v-model="formData.description" class="form-control" rows="3" placeholder="Enter product description"></textarea>
               </div>
 
               <div class="mb-3 form-check">
-                <input
-                  v-model="formData.is_active"
-                  type="checkbox"
-                  class="form-check-input"
-                  id="isActive"
-                />
+                <input v-model="formData.is_active" type="checkbox" class="form-check-input" id="isActive" />
                 <label class="form-check-label" for="isActive">
                   Active Product
                 </label>
@@ -280,7 +239,7 @@
               </div>
               <div class="col-md-6 mb-3">
                 <label class="text-muted small">Sale Price</label>
-                <p class="fw-bold text-primary">{{ formatCurrency(selectedProduct.sale_price) }}</p>
+                <p class="fw-bold text-primary">{{ formatCurrency(selectedProduct.selling_price ?? selectedProduct.sale_price) }}</p>
               </div>
               <div class="col-12 mb-3">
                 <label class="text-muted small">Description</label>
@@ -385,13 +344,20 @@ const showCreateModal = () => {
 const editProduct = (product) => {
   isEditing.value = true
   selectedProduct.value = product
+  // API may return category/base_unit as object { id, name } or as id; normalize to id so select shows selection
+  const categoryId = product.category != null && typeof product.category === 'object'
+    ? product.category.id
+    : (product.category ?? product.category_id)
+  const baseUnitId = product.base_unit != null && typeof product.base_unit === 'object'
+    ? product.base_unit.id
+    : (product.base_unit ?? product.base_unit_id)
   formData.value = {
     name: product.name,
     sku: product.sku,
-    category: product.category,
-    base_unit: product.base_unit,
-    purchase_price: parseFloat(product.purchase_price),
-    sale_price: parseFloat(product.sale_price),
+    category: categoryId != null && categoryId !== '' ? Number(categoryId) : '',
+    base_unit: baseUnitId != null && baseUnitId !== '' ? Number(baseUnitId) : '',
+    purchase_price: parseFloat(product.purchase_price) || 0,
+    sale_price: parseFloat(product.sale_price ?? product.selling_price) || 0,
     description: product.description || '',
     is_active: product.is_active
   }
@@ -411,10 +377,13 @@ const viewProduct = (product) => {
 
 const saveProduct = async () => {
   try {
+    // API expects selling_price; form uses sale_price
+    const payload = { ...formData.value, selling_price: formData.value.sale_price }
+    delete payload.sale_price
     if (isEditing.value) {
-      await productStore.updateProduct(selectedProduct.value.id, formData.value)
+      await productStore.updateProduct(selectedProduct.value.id, payload)
     } else {
-      await productStore.createProduct(formData.value)
+      await productStore.createProduct(payload)
     }
     modalInstance.hide()
     resetForm()
@@ -452,11 +421,9 @@ const clearFilters = () => {
   filterUnit.value = ''
 }
 
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD'
-  }).format(amount || 0)
+const formatCurrency = (amount, decimals = 4) => {
+  if (amount === null || amount === undefined) return '-'
+  return '৳' + Number(amount || 0).toFixed(decimals)
 }
 
 const getStockBadgeClass = (stock) => {
