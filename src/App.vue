@@ -8,6 +8,7 @@ const productsMenuOpen = ref(false)
 const purchaseMenuOpen = ref(false)
 const saleMenuOpen = ref(false)
 const contactsMenuOpen = ref(false)
+const paymentMenuOpen = ref(false)
 const isMobile = ref(false)
 const route = useRoute()
 const router = useRouter()
@@ -52,6 +53,10 @@ const toggleContactsMenu = () => {
   contactsMenuOpen.value = !contactsMenuOpen.value
 }
 
+const togglePaymentMenu = () => {
+  paymentMenuOpen.value = !paymentMenuOpen.value
+}
+
 // Check if current route is in purchase section
 const isPurchaseSection = computed(() => {
   return ['/purchase', '/purchase-returns'].includes(route.path)
@@ -72,6 +77,11 @@ const isContactsSection = computed(() => {
   return ['/supplier', '/customer'].includes(route.path)
 })
 
+// Check if current route is in payment section
+const isPaymentSection = computed(() => {
+  return ['/payment', '/refund'].includes(route.path)
+})
+
 // Check if current route is login page (no layout needed)
 const isLoginPage = computed(() => {
   return route.path === '/login'
@@ -84,6 +94,7 @@ watch(() => route.path, (newPath) => {
   saleMenuOpen.value = false
   productsMenuOpen.value = false
   contactsMenuOpen.value = false
+  paymentMenuOpen.value = false
 
   // Auto-expand parent menus based on route
   if (['/purchase', '/purchase-returns'].includes(newPath)) {
@@ -94,6 +105,8 @@ watch(() => route.path, (newPath) => {
     productsMenuOpen.value = true
   } else if (['/supplier', '/customer'].includes(newPath)) {
     contactsMenuOpen.value = true
+  } else if (['/payment', '/refund'].includes(newPath)) {
+    paymentMenuOpen.value = true
   }
 
   // Auto-collapse sidebar on any route change (especially on mobile)
@@ -276,11 +289,32 @@ const handleLogout = () => {
           </router-link>
         </li>
 
+        <!-- Payment Parent Menu -->
         <li class="nav-item">
-          <router-link to="/payment" class="nav-link" :class="{ active: $route.path === '/payment' }" :title="sidebarOpen ? '' : 'Payment'">
+          <div class="nav-link parent-menu" :class="{ 'active': isPaymentSection }" @click="togglePaymentMenu" :title="sidebarOpen ? '' : 'Payment'">
             <i class="bi bi-credit-card"></i>
-            <span v-show="sidebarOpen" class="ms-2">Payment</span>
-          </router-link>
+            <span v-show="sidebarOpen" class="ms-2 flex-grow-1">Payment</span>
+            <i v-show="sidebarOpen" class="bi chevron-icon ms-auto" :class="paymentMenuOpen ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
+          </div>
+
+          <!-- Payment Submenu -->
+          <div class="submenu-collapse" :class="{ 'show': paymentMenuOpen && sidebarOpen }">
+            <ul class="nav flex-column submenu">
+              <li class="nav-item">
+                <router-link to="/payment" class="nav-link submenu-link" :class="{ 'active': $route.path === '/payment' }">
+                  <i class="bi bi-cash-stack"></i>
+                  <span class="ms-2">Payments</span>
+                </router-link>
+              </li>
+
+              <li class="nav-item">
+                <router-link to="/refund" class="nav-link submenu-link" :class="{ 'active': $route.path === '/refund' }">
+                  <i class="bi bi-arrow-repeat"></i>
+                  <span class="ms-2">Refunds</span>
+                </router-link>
+              </li>
+            </ul>
+          </div>
         </li>
 
         <li class="nav-item">

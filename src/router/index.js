@@ -9,6 +9,7 @@ import SalePage from '../views/SalePage.vue'
 import SalesManagementPage from '../views/SalesManagementPage.vue'
 import SaleReturnPage from '../views/SaleReturnPage.vue'
 import PaymentPage from '../views/PaymentPage.vue'
+import RefundPage from '../views/RefundPage.vue'
 import ProductPage from '../views/ProductPage.vue'
 import ProductManagementPage from '../views/ProductManagementPage.vue'
 import CategoryPage from '../views/CategoryPage.vue'
@@ -108,6 +109,12 @@ const routes = [
     path: '/payment',
     name: 'Payment',
     component: PaymentPage,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/refund',
+    name: 'Refund',
+    component: RefundPage,
     meta: { requiresAuth: true }
   },
   {

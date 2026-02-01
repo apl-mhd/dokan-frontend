@@ -5,6 +5,8 @@ import * as paymentApi from '../api/payment.api'
 export const usePaymentStore = defineStore('payment', () => {
   const customerPayments = ref([])
   const supplierPayments = ref([])
+  const customerRefunds = ref([])
+  const supplierRefunds = ref([])
   const currentPayment = ref(null)
   const loading = ref(false)
   const error = ref(null)
@@ -227,10 +229,90 @@ export const usePaymentStore = defineStore('payment', () => {
     }
   }
 
+  // Fetch customer refunds
+  const fetchCustomerRefunds = async (params = {}) => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await paymentApi.fetchCustomerRefunds(params)
+      if (response.data.data) {
+        customerRefunds.value = response.data.data
+      }
+      return response
+    } catch (err) {
+      error.value = err.response?.data?.error || 'Failed to fetch customer refunds'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Fetch supplier refunds
+  const fetchSupplierRefunds = async (params = {}) => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await paymentApi.fetchSupplierRefunds(params)
+      if (response.data.data) {
+        supplierRefunds.value = response.data.data
+      }
+      return response
+    } catch (err) {
+      error.value = err.response?.data?.error || 'Failed to fetch supplier refunds'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Create refund
+  const createRefund = async (data) => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await paymentApi.createRefund(data)
+      if (response.data.data) {
+        if (data.payment_type === 'customer_refund') {
+          customerRefunds.value.unshift(response.data.data)
+        } else {
+          supplierRefunds.value.unshift(response.data.data)
+        }
+      }
+      return response
+    } catch (err) {
+      error.value = err.response?.data?.error || 'Failed to create refund'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Delete refund
+  const deleteRefund = async (id, paymentType) => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await paymentApi.deleteRefund(id)
+      if (paymentType === 'customer_refund') {
+        customerRefunds.value = customerRefunds.value.filter(r => r.id !== id)
+      } else {
+        supplierRefunds.value = supplierRefunds.value.filter(r => r.id !== id)
+      }
+      return response
+    } catch (err) {
+      error.value = err.response?.data?.error || 'Failed to delete refund'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   // Reset state
   const resetState = () => {
     customerPayments.value = []
     supplierPayments.value = []
+    customerRefunds.value = []
+    supplierRefunds.value = []
     currentPayment.value = null
     loading.value = false
     error.value = null
@@ -246,6 +328,8 @@ export const usePaymentStore = defineStore('payment', () => {
     // State
     customerPayments,
     supplierPayments,
+    customerRefunds,
+    supplierRefunds,
     currentPayment,
     loading,
     error,
@@ -262,6 +346,10 @@ export const usePaymentStore = defineStore('payment', () => {
     createSupplierPayment,
     updateSupplierPayment,
     deleteSupplierPayment,
+    fetchCustomerRefunds,
+    fetchSupplierRefunds,
+    createRefund,
+    deleteRefund,
     resetState
   }
 })

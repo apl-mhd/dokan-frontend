@@ -41,3 +41,24 @@ export const updateSupplierPayment = (id, data) => {
 export const deleteSupplierPayment = (id) => {
   return api.delete(`/payments/supplier/${id}/`)
 }
+
+// Refunds (unified payment API with payment_type)
+export const fetchCustomerRefunds = (params = {}) => {
+  return api.get('/payments/', { params: { ...params, payment_type: 'customer_refund' } })
+}
+
+export const fetchSupplierRefunds = (params = {}) => {
+  return api.get('/payments/', { params: { ...params, payment_type: 'supplier_refund' } })
+}
+
+export const createRefund = (data) => {
+  return api.post('/payments/', data)
+}
+
+export const fetchRefund = (id) => {
+  return api.get(`/payments/${id}/`)
+}
+
+export const deleteRefund = (id) => {
+  return api.delete(`/payments/${id}/`)
+}
