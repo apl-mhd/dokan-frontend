@@ -104,6 +104,24 @@ export const useSupplierStore = defineStore('supplier', () => {
     }
   }
 
+  // Adjust supplier balance
+  const adjustBalance = async (id, { amount, description = '', date = null }) => {
+    loading.value = true
+    error.value = null
+    try {
+      const payload = { amount, description }
+      if (date) payload.date = date
+      const response = await api.post(`/suppliers/${id}/adjust-balance/`, payload)
+      return response.data
+    } catch (err) {
+      error.value = err.response?.data?.details?.amount?.[0] || err.response?.data?.error || 'Failed to adjust balance'
+      console.error('Error adjusting balance:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   // Delete supplier
   const deleteSupplier = async (id) => {
     loading.value = true
@@ -129,6 +147,7 @@ export const useSupplierStore = defineStore('supplier', () => {
     fetchSupplier,
     createSupplier,
     updateSupplier,
+    adjustBalance,
     deleteSupplier
   }
 })

@@ -62,7 +62,12 @@
           <td>{{ customer.email || '-' }}</td>
           <td>{{ customer.phone || '-' }}</td>
           <td>{{ truncate(customer.address, 40) }}</td>
-          <td><strong>{{ formatCurrency(customer.balance || 0) }}</strong></td>
+          <td>
+            <strong>{{ formatCurrency(customer.balance || 0) }}</strong>
+            <button class="btn btn-sm btn-link p-0 ms-1" @click="openBalanceModal(customer)" title="Adjust Balance">
+              <i class="bi bi-pencil-square text-muted"></i>
+            </button>
+          </td>
           <td>
             <span class="badge" :class="customer.is_active ? 'bg-success' : 'bg-secondary'">
               {{ customer.is_active ? 'Active' : 'Inactive' }}
@@ -220,11 +225,60 @@
         </div>
       </div>
     </div>
+
+    <!-- Balance Adjustment Modal -->
+    <div class="modal fade" tabindex="-1" aria-hidden="true" ref="balanceModalRef">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Adjust Balance - {{ balanceParty?.name }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div v-if="balanceError" class="alert alert-danger">{{ balanceError }}</div>
+            <div class="mb-3">
+              <label class="form-label">Current Balance</label>
+              <p class="form-control-plaintext fw-bold fs-5">{{ formatCurrency(balanceParty?.balance || 0) }}</p>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Adjustment Amount <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text">৳</span>
+                <input
+                  v-model.number="balanceForm.amount"
+                  type="number"
+                  step="0.01"
+                  class="form-control"
+                  placeholder="Positive to increase, negative to decrease"
+                />
+              </div>
+              <div class="form-text">Use positive amount to increase balance, negative to decrease.</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Date</label>
+              <input v-model="balanceForm.date" type="date" class="form-control" />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Description (optional)</label>
+              <textarea v-model="balanceForm.description" class="form-control" rows="2" placeholder="e.g. Balance adjustment for correction"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" :disabled="savingBalance || !balanceForm.amount" @click="handleAdjustBalance">
+              <span v-if="savingBalance" class="spinner-border spinner-border-sm me-2"></span>
+              Apply Adjustment
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { Modal } from 'bootstrap'
 import { useCustomerStore } from '../stores/customer.store'
 import { useModal } from '../composables/useModal'
 import { useFormatter } from '../composables/useFormatter'
@@ -251,6 +305,14 @@ const isEditing = ref(false)
 const selectedCustomer = ref(null)
 const formRef = ref(null)
 const formErrors = ref({})
+
+// Balance adjustment modal
+const balanceModalRef = ref(null)
+let balanceModalInstance = null
+const balanceParty = ref(null)
+const balanceForm = ref({ amount: null, description: '', date: '' })
+const savingBalance = ref(false)
+const balanceError = ref('')
 
 const filters = ref({
   search: '',
@@ -472,5 +534,44 @@ const resetForm = () => {
     credit_limit: 0.00
   }
   formErrors.value = {}
+}
+
+const openBalanceModal = (customer) => {
+  balanceParty.value = customer
+  balanceForm.value = { amount: null, description: '', date: new Date().toISOString().split('T')[0] }
+  balanceError.value = ''
+  if (balanceModalRef.value) {
+    if (!balanceModalInstance) {
+      balanceModalInstance = new Modal(balanceModalRef.value)
+    }
+    balanceModalInstance.show()
+  }
+}
+
+const handleAdjustBalance = async () => {
+  if (!balanceParty.value || balanceForm.value.amount === null || balanceForm.value.amount === '') {
+    balanceError.value = 'Please enter an amount'
+    return
+  }
+  if (balanceForm.value.amount === 0) {
+    balanceError.value = 'Amount cannot be zero'
+    return
+  }
+  savingBalance.value = true
+  balanceError.value = ''
+  try {
+    await customerStore.adjustBalance(balanceParty.value.id, {
+      amount: parseFloat(balanceForm.value.amount),
+      description: balanceForm.value.description,
+      date: balanceForm.value.date || null
+    })
+    balanceModalInstance?.hide()
+    balanceParty.value = null
+    await fetchCustomers()
+  } catch (err) {
+    balanceError.value = customerStore.error || 'Failed to adjust balance'
+  } finally {
+    savingBalance.value = false
+  }
 }
 </script>
