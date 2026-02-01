@@ -33,31 +33,15 @@
               <span v-if="(props.type === 'sale' || props.type === 'sale_return' || props.type === 'purchase' || props.type === 'purchase_return') && invoice.status !== 'cancelled' && invoice.status !== 'returned' && invoice.status !== 'partial_return' && !(props.type === 'sale' && invoice.status === 'delivered')" class="badge" :class="getStatusClass(invoice.status, config.statusClassOptions)" @click="handleStatusChange(invoice)" title="Click to change status" style="cursor: pointer;">
                 {{ getStatusDisplayLabel(invoice.status) }}
               </span>
-              <span
-                v-else
-                class="badge"
-                :class="getStatusClass(invoice.status, config.statusClassOptions)"
-                title=""
-              >
+              <span v-else class="badge" :class="getStatusClass(invoice.status, config.statusClassOptions)" title="">
                 {{ getStatusDisplayLabel(invoice.status) }}
               </span>
             </td>
             <td>
-              <span
-                v-if="isPaymentClickable(invoice)"
-                class="badge"
-                :class="getPaymentStatusClass(invoice.payment_status)"
-                title="Click to take payment (Cash)"
-                style="cursor: pointer;"
-                @click="openPaymentModal(invoice)"
-              >
+              <span v-if="isPaymentClickable(invoice)" class="badge" :class="getPaymentStatusClass(invoice.payment_status)" title="Click to take payment (Cash)" style="cursor: pointer;" @click="openPaymentModal(invoice)">
                 {{ invoice.payment_status || 'unpaid' }}
               </span>
-              <span
-                v-else
-                class="badge"
-                :class="getPaymentStatusClass(invoice.payment_status)"
-              >
+              <span v-else class="badge" :class="getPaymentStatusClass(invoice.payment_status)">
                 {{ invoice.payment_status || 'unpaid' }}
               </span>
             </td>
@@ -703,7 +687,7 @@
                 <i class="bi bi-info-circle me-2"></i>
                 <strong>FIFO Payment System:</strong> Payment will be applied to this invoice first, then to other unpaid invoices in chronological order (oldest first).
               </div>
-              
+
               <p class="mb-3">
                 <strong>Invoice:</strong> {{ paymentInvoice.invoice_number || `#${paymentInvoice.id}` }}<br>
                 <strong>{{ config.entityLabel }}:</strong> {{ paymentInvoice[config.entityNameField] || '-' }}<br>

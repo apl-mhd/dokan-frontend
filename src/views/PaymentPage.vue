@@ -115,9 +115,9 @@
             <button v-if="item.status === 'pending'" class="btn btn-outline-primary" @click="editPayment(item)" title="Edit">
               <i class="bi bi-pencil"></i>
             </button>
-            <button class="btn btn-outline-danger" @click="deletePayment(item)" title="Delete">
+            <!-- <button class="btn btn-outline-danger" @click="deletePayment(item)" title="Delete">
               <i class="bi bi-trash"></i>
-            </button>
+            </button> -->
           </div>
         </template>
       </DataTable>

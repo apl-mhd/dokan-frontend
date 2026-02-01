@@ -13,9 +13,9 @@
         >
           <i class="bi bi-arrow-return-right text-warning"></i>
           Customer Refunds
-          <span v-if="customerRefunds.length" class="badge bg-warning text-dark ms-2">
+          <!-- <span v-if="customerRefunds.length" class="badge bg-warning text-dark ms-2">
             {{ customerRefunds.length }}
-          </span>
+          </span> -->
         </a>
       </li>
       <li class="nav-item">
