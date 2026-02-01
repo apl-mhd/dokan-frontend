@@ -1140,7 +1140,24 @@ const loadProductUnits = async (productId) => {
 }
 
 const handleUnitChange = () => {
-  // Only update unit conversion for purchase types
+  // Set unit price = selling_price (or purchase_price) × unit.conversion_factor
+  const currentItem = invoiceItemsRef.value?.currentItem
+  if (currentItem?.product && currentItem?.unit) {
+    const product = productStore.products.find(p => p.id === currentItem.product)
+    const unit = availableUnits.value.find(u => u.id === currentItem.unit)
+    if (product && unit) {
+      const isPurchase = props.type === 'purchase' || props.type === 'purchase_return'
+      const pricePerBase = isPurchase
+        ? parseFloat(product.purchase_price) || 0
+        : parseFloat(product.selling_price) || 0
+      const conversionFactor = parseFloat(unit.conversion_factor) || 1
+      const unitPrice = parseFloat((pricePerBase * conversionFactor).toFixed(4))
+      currentItem.unit_price = unitPrice
+      const qty = parseFloat(currentItem.quantity) || 0
+      currentItem.line_total = parseFloat((qty * unitPrice).toFixed(2))
+    }
+  }
+  // Update unit conversion display for purchase types
   if (props.type === 'purchase' || props.type === 'purchase_return') {
     updateUnitConversion()
   }
