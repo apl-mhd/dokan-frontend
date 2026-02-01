@@ -1132,6 +1132,13 @@ const loadProductUnits = async (productId) => {
     availableUnits.value.forEach(unit => {
       unitsCache.value.set(unit.id, unit.name)
     })
+    // Pre-select default unit for purchase/sale
+    const defaultUnit = availableUnits.value.find(u => u.is_default)
+    const currentItem = invoiceItemsRef.value?.currentItem
+    if (defaultUnit && currentItem) {
+      currentItem.unit = defaultUnit.id
+      handleUnitChange()
+    }
     // Only update unit conversion for purchase types
     if (props.type === 'purchase' || props.type === 'purchase_return') {
       updateUnitConversion()

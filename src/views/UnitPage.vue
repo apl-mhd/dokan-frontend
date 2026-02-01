@@ -108,6 +108,10 @@
                 <span v-else class="badge bg-secondary">Derived Unit</span>
               </td>
               <td>
+                <span v-if="unit.is_default" class="badge bg-success">Default</span>
+                <span v-else class="text-muted">—</span>
+              </td>
+              <td>
                 <button
                   class="btn btn-sm btn-outline-primary me-2"
                   @click="handleEditUnit(unit)"
@@ -273,6 +277,37 @@
                   Base units have conversion_factor = 1.0000 and are used as reference for conversions
                 </div>
               </div>
+
+              <div class="mb-3">
+                <div class="form-check">
+                  <input
+                    v-model="unitFormData.is_default"
+                    type="checkbox"
+                    class="form-check-input"
+                    id="isDefault"
+                  />
+                  <label class="form-check-label" for="isDefault">
+                    Is Default Unit
+                  </label>
+                </div>
+                <div class="form-text">
+                  Only one default unit per category; used when selecting unit in invoices
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <div class="form-check">
+                  <input
+                    v-model="unitFormData.is_active"
+                    type="checkbox"
+                    class="form-check-input"
+                    id="isActive"
+                  />
+                  <label class="form-check-label" for="isActive">
+                    Is Active
+                  </label>
+                </div>
+              </div>
             </form>
           </div>
           <div class="modal-footer">
@@ -395,7 +430,9 @@ const unitFormData = ref({
   name: '',
   unit_category: '',
   conversion_factor: 1.0000,
-  is_base_unit: false
+  is_base_unit: false,
+  is_default: false,
+  is_active: true
 })
 
 const isEditingCategory = ref(false)
@@ -412,6 +449,7 @@ const unitColumns = [
   { key: 'conversion_factor', label: 'Conversion Factor', width: '150px' },
   { key: 'category', label: 'Category' },
   { key: 'type', label: 'Type', width: '120px' },
+  { key: 'is_default', label: 'Default', width: '90px' },
   { key: 'actions', label: 'Actions', width: '150px' }
 ]
 
@@ -482,7 +520,9 @@ const handleEditUnit = (unit) => {
     name: unit.name,
     unit_category: unit.unit_category || '',
     conversion_factor: parseFloat(unit.conversion_factor) || 1.0000,
-    is_base_unit: unit.is_base_unit || false
+    is_base_unit: unit.is_base_unit || false,
+    is_default: unit.is_default || false,
+    is_active: unit.is_active !== false
   }
   showUnitModal()
 }
@@ -493,7 +533,9 @@ const handleSaveUnit = async () => {
     const payload = {
       name: unitFormData.value.name,
       conversion_factor: parseFloat(unitFormData.value.conversion_factor) || 1.0000,
-      is_base_unit: unitFormData.value.is_base_unit || false
+      is_base_unit: unitFormData.value.is_base_unit || false,
+      is_default: unitFormData.value.is_default || false,
+      is_active: unitFormData.value.is_active !== false
     }
     
     // Only include unit_category if it has a value
@@ -534,7 +576,9 @@ const resetUnitForm = () => {
     name: '',
     unit_category: '',
     conversion_factor: 1.0000,
-    is_base_unit: false
+    is_base_unit: false,
+    is_default: false,
+    is_active: true
   }
 }
 
