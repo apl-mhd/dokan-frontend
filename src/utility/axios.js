@@ -1,8 +1,7 @@
 import axios from "axios";
-import { useAuthStore } from "../stores/authStore";
 
 const api = axios.create({
-  baseURL: "http://localhost:8000/api/",
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/",
   headers: {
     "Content-Type": "application/json",
   },
@@ -31,27 +30,35 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // Don't retry auth endpoints on 401 (would cause infinite loop)
+    const isAuthEndpoint = originalRequest.url?.includes("/token/");
     // If 401 and not already retried, try to refresh token
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isAuthEndpoint
+    ) {
       originalRequest._retry = true;
 
       try {
+        const { useAuthStore } = await import("../stores/authStore");
         const authStore = useAuthStore();
         const newToken = await authStore.refreshToken();
-        
+
         // Retry original request with new token
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return api(originalRequest);
       } catch (refreshError) {
         // Refresh failed, logout user
+        const { useAuthStore } = await import("../stores/authStore");
         const authStore = useAuthStore();
         authStore.logout();
-        
+
         // Redirect to login (if router is available)
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
+        if (window.location.pathname !== "/login") {
+          window.location.href = "/login";
         }
-        
+
         return Promise.reject(refreshError);
       }
     }

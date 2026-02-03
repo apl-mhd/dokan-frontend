@@ -1,109 +1,110 @@
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import axios from 'axios'
+import { defineStore } from "pinia";
+import { ref, computed } from "vue";
+import api from "../utility/axios";
 
-export const useAuthStore = defineStore('auth', () => {
+export const useAuthStore = defineStore("auth", () => {
   // State
-  const token = ref(localStorage.getItem('token') || null)
-  const user = ref(null)
-  const loading = ref(false)
-  const error = ref(null)
+  const token = ref(localStorage.getItem("token") || null);
+  const user = ref(null);
+  const loading = ref(false);
+  const error = ref(null);
 
   // Getters
-  const isAuthenticated = computed(() => !!token.value)
+  const isAuthenticated = computed(() => !!token.value);
 
   // Actions
   const login = async (credentials) => {
-    loading.value = true
-    error.value = null
-    
+    loading.value = true;
+    error.value = null;
+
     try {
-      // Create axios instance without interceptor for login
-      const response = await axios.post('http://localhost:8000/api/token/', credentials)
-      
+      const response = await api.post("/token/", credentials);
+
       // Store token
-      token.value = response.data.access
-      localStorage.setItem('token', response.data.access)
-      
+      token.value = response.data.access;
+      localStorage.setItem("token", response.data.access);
+
       // Store refresh token if provided
       if (response.data.refresh) {
-        localStorage.setItem('refresh_token', response.data.refresh)
+        localStorage.setItem("refresh_token", response.data.refresh);
       }
-      
+
       // Optionally fetch user details
-      await fetchUserDetails()
-      
-      return response.data
+      await fetchUserDetails();
+
+      return response.data;
     } catch (err) {
-      error.value = err.response?.data?.detail || 'Login failed. Please check your credentials.'
-      console.error('Login error:', err)
-      throw err
+      error.value =
+        err.response?.data?.detail ||
+        "Login failed. Please check your credentials.";
+      console.error("Login error:", err);
+      throw err;
     } finally {
-      loading.value = false
+      loading.value = false;
     }
-  }
+  };
 
   const logout = () => {
     // Clear state
-    token.value = null
-    user.value = null
-    
+    token.value = null;
+    user.value = null;
+
     // Clear localStorage
-    localStorage.removeItem('token')
-    localStorage.removeItem('refresh_token')
-    
+    localStorage.removeItem("token");
+    localStorage.removeItem("refresh_token");
+
     // Clear error
-    error.value = null
-  }
+    error.value = null;
+  };
 
   const fetchUserDetails = async () => {
     try {
       // If you have a user endpoint, fetch user details
       // const response = await api.get('/user/me/')
       // user.value = response.data
-      
+
       // For now, set a basic user object
       user.value = {
-        username: 'User'
-      }
+        username: "User",
+      };
     } catch (err) {
-      console.log('User details endpoint not available')
-      user.value = { username: 'User' }
+      console.log("User details endpoint not available");
+      user.value = { username: "User" };
     }
-  }
+  };
 
   const checkAuth = () => {
-    const storedToken = localStorage.getItem('token')
+    const storedToken = localStorage.getItem("token");
     if (storedToken) {
-      token.value = storedToken
-      fetchUserDetails()
+      token.value = storedToken;
+      fetchUserDetails();
     }
-  }
+  };
 
   const refreshToken = async () => {
     try {
-      const refresh = localStorage.getItem('refresh_token')
+      const refresh = localStorage.getItem("refresh_token");
       if (!refresh) {
-        throw new Error('No refresh token available')
+        throw new Error("No refresh token available");
       }
 
-      const response = await axios.post('http://localhost:8000/api/token/refresh/', {
-        refresh
-      })
+      const response = await api.post("/token/refresh/", {
+        refresh,
+      });
 
-      token.value = response.data.access
-      localStorage.setItem('token', response.data.access)
-      
-      return response.data.access
+      token.value = response.data.access;
+      localStorage.setItem("token", response.data.access);
+
+      return response.data.access;
     } catch (err) {
-      console.error('Token refresh failed:', err)
-      logout()
-      throw err
+      console.error("Token refresh failed:", err);
+      logout();
+      throw err;
     }
-  }
+  };
 
   // Initialize auth state on store creation
-  checkAuth()
+  checkAuth();
 
   return {
     // State
@@ -111,16 +112,15 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     loading,
     error,
-    
+
     // Getters
     isAuthenticated,
-    
+
     // Actions
     login,
     logout,
     fetchUserDetails,
     checkAuth,
-    refreshToken
-  }
-})
-
+    refreshToken,
+  };
+});
