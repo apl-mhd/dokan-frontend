@@ -144,9 +144,9 @@ const columns = [
   { key: 'actions', label: 'Actions', width: '150px' }
 ]
 
-// Base units only (product.base_unit must be a base unit). Unit remains editable even if product has purchase/sale history.
+// Base units only for dropdown (product.base_unit must be a base unit)
 const baseUnitOptions = computed(() =>
-  (unitStore.units || []).filter(u => u.is_base_unit === true)
+  (unitStore.units || []).filter(u => u.is_base_unit === true || u.is_base_unit === 'true')
 )
 
 // Computed pagination data for DataTable

@@ -162,8 +162,8 @@
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Base Unit <span class="text-danger">*</span></label>
                   <select v-model="formData.base_unit" class="form-select" required>
-                    <option value="">Select unit</option>
-                    <option v-for="unit in unitStore.units" :key="unit.id" :value="unit.id">
+                    <option value="">Select base unit</option>
+                    <option v-for="unit in baseUnitOptions" :key="unit.id" :value="unit.id">
                       {{ unit.name }}
                     </option>
                   </select>
@@ -234,11 +234,11 @@
                 <p>{{ selectedProduct.base_unit_name || '-' }}</p>
               </div>
               <div class="col-md-6 mb-3">
-                <label class="text-muted small">Purchase Price</label>
+                <label class="text-muted small">Purchase Price (Base Price)</label>
                 <p class="fw-bold text-success">{{ formatCurrency(selectedProduct.purchase_price) }}</p>
               </div>
               <div class="col-md-6 mb-3">
-                <label class="text-muted small">Sale Price</label>
+                <label class="text-muted small">Sale Price (Base Price)</label>
                 <p class="fw-bold text-primary">{{ formatCurrency(selectedProduct.selling_price ?? selectedProduct.sale_price) }}</p>
               </div>
               <div class="col-12 mb-3">
@@ -280,6 +280,11 @@ import { Modal } from 'bootstrap'
 const productStore = useProductStore()
 const categoryStore = useCategoryStore()
 const unitStore = useUnitStore()
+
+// Base units only for product base_unit dropdown (backend requires base unit)
+const baseUnitOptions = computed(() =>
+  (unitStore.units || []).filter(u => u.is_base_unit === true)
+)
 
 const modalRef = ref(null)
 const viewModalRef = ref(null)
