@@ -1,106 +1,111 @@
 <template>
-  <div class="reg-page">
-    <div class="reg-page__card">
-      <header class="reg-header">
-        <div class="reg-header__icon">
-          <i class="bi bi-shop"></i>
-        </div>
-        <h1 class="reg-header__title">Dokan</h1>
-        <p class="reg-header__subtitle">Inventory Management System</p>
-      </header>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="text-center mb-4">
+        <h1 class="brand-title mb-2">
+          <i class="bi bi-shop"></i> Dokan
+        </h1>
+        <p class="text-muted">Inventory Management System</p>
+      </div>
 
-      <div class="reg-box">
-        <div class="reg-box__inner">
-          <h2 class="reg-form-title">Create your account</h2>
-          <p class="reg-form-desc">Get started with your business in a few steps.</p>
+      <div class="card shadow-lg">
+        <div class="card-body p-4">
+          <h4 class="card-title text-center mb-4">Create Your Account</h4>
 
-          <div v-if="authStore.error" class="reg-alert reg-alert--error" role="alert">
-            <i class="bi bi-exclamation-circle me-2"></i>
-            <span>{{ authStore.error }}</span>
-            <button type="button" class="reg-alert__close" @click="authStore.error = null" aria-label="Close">
-              <i class="bi bi-x-lg"></i>
-            </button>
+          <!-- General error (non-field) -->
+          <div v-if="authStore.error" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>{{ authStore.error }}
+            <button type="button" class="btn-close" @click="authStore.error = null"></button>
           </div>
 
-          <form @submit.prevent="handleRegister" class="reg-form">
-            <div class="reg-row">
-              <div class="reg-field">
-                <label for="phone" class="reg-label">Phone number <span class="reg-required">*</span></label>
-                <div class="reg-input-wrap">
-                  <i class="bi bi-telephone reg-input-icon"></i>
-                  <input v-model="form.phone" type="tel" class="reg-input" :class="{ 'reg-input--invalid': fieldError('phone') }" id="phone" placeholder="01XXXXXXXXX" required :disabled="authStore.loading" autocomplete="tel" />
+          <form @submit.prevent="handleRegister" class="registration-form">
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label for="phone" class="form-label">
+                  <i class="bi bi-telephone me-2"></i>Phone number <span class="text-danger">*</span>
+                </label>
+                <input v-model="form.phone" type="tel" class="form-control form-control-lg" :class="{ 'is-invalid': fieldError('phone') }" id="phone" placeholder="e.g. 01XXXXXXXXX" required :disabled="authStore.loading" autocomplete="tel" />
+                <div v-if="fieldError('phone')" class="invalid-feedback d-block">
+                  {{ fieldError('phone') }}
                 </div>
-                <p v-if="fieldError('phone')" class="reg-error">{{ fieldError('phone') }}</p>
               </div>
-              <div class="reg-field">
-                <label for="email" class="reg-label">Email <span class="reg-optional">(optional)</span></label>
-                <div class="reg-input-wrap">
-                  <i class="bi bi-envelope reg-input-icon"></i>
-                  <input v-model="form.email" type="email" class="reg-input" :class="{ 'reg-input--invalid': fieldError('email') }" id="email" placeholder="you@example.com" :disabled="authStore.loading" autocomplete="email" />
+              <div class="col-md-6">
+                <label for="email" class="form-label">
+                  <i class="bi bi-envelope me-2"></i>Email <span class="text-muted">(optional)</span>
+                </label>
+                <input v-model="form.email" type="email" class="form-control form-control-lg" :class="{ 'is-invalid': fieldError('email') }" id="email" placeholder="your@email.com" :disabled="authStore.loading" autocomplete="email" />
+                <div v-if="fieldError('email')" class="invalid-feedback d-block">
+                  {{ fieldError('email') }}
                 </div>
-                <p v-if="fieldError('email')" class="reg-error">{{ fieldError('email') }}</p>
               </div>
             </div>
 
-            <div class="reg-field reg-field--full">
-              <label for="business_name" class="reg-label">Business name <span class="reg-required">*</span></label>
-              <div class="reg-input-wrap">
-                <i class="bi bi-building reg-input-icon"></i>
-                <input v-model="form.business_name" type="text" class="reg-input" :class="{ 'reg-input--invalid': fieldError('business_name') || fieldError('name') }" id="business_name" placeholder="Your shop or business name" required :disabled="authStore.loading" autocomplete="organization" />
-              </div>
-              <p v-if="fieldError('business_name') || fieldError('name')" class="reg-error">
+            <div class="mb-3">
+              <label for="business_name" class="form-label">
+                <i class="bi bi-building me-2"></i>Business name <span class="text-danger">*</span>
+              </label>
+              <input v-model="form.business_name" type="text" class="form-control form-control-lg" :class="{ 'is-invalid': fieldError('business_name') || fieldError('name') }" id="business_name" placeholder="Your shop or business name" required :disabled="authStore.loading" autocomplete="organization" />
+              <div v-if="fieldError('business_name') || fieldError('name')" class="invalid-feedback d-block">
                 {{ fieldError('business_name') || fieldError('name') }}
-              </p>
+              </div>
             </div>
 
-            <div class="reg-row">
-              <div class="reg-field">
-                <label for="password" class="reg-label">Password <span class="reg-required">*</span></label>
-                <div class="reg-input-wrap">
-                  <i class="bi bi-lock reg-input-icon"></i>
-                  <input v-model="form.password" :type="showPassword ? 'text' : 'password'" class="reg-input" :class="{ 'reg-input--invalid': fieldError('password') || localErrors.password }" id="password" placeholder="Choose a password" required :disabled="authStore.loading" autocomplete="new-password" />
-                  <button type="button" class="reg-input-toggle" @click="showPassword = !showPassword" :disabled="authStore.loading" tabindex="-1" :aria-label="showPassword ? 'Hide password' : 'Show password'">
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label for="password" class="form-label">
+                  <i class="bi bi-lock me-2"></i>Password <span class="text-danger">*</span>
+                </label>
+                <div class="input-group">
+                  <input v-model="form.password" :type="showPassword ? 'text' : 'password'" class="form-control form-control-lg" :class="{ 'is-invalid': fieldError('password') || localErrors.password }" id="password" placeholder="Choose a password" required :disabled="authStore.loading" autocomplete="new-password" />
+                  <button class="btn btn-outline-secondary" type="button" @click="showPassword = !showPassword" :disabled="authStore.loading" tabindex="-1">
                     <i class="bi" :class="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
                   </button>
                 </div>
-                <p v-if="fieldError('password') || localErrors.password" class="reg-error">
+                <div v-if="fieldError('password') || localErrors.password" class="invalid-feedback d-block">
                   {{ fieldError('password') || localErrors.password }}
-                </p>
+                </div>
               </div>
-              <div class="reg-field">
-                <label for="confirm_password" class="reg-label">Confirm password <span class="reg-required">*</span></label>
-                <div class="reg-input-wrap">
-                  <i class="bi bi-lock-fill reg-input-icon"></i>
-                  <input v-model="form.confirm_password" :type="showConfirmPassword ? 'text' : 'password'" class="reg-input" :class="{ 'reg-input--invalid': localErrors.confirm_password }" id="confirm_password" placeholder="Confirm password" required :disabled="authStore.loading" autocomplete="new-password" />
-                  <button type="button" class="reg-input-toggle" @click="showConfirmPassword = !showConfirmPassword" :disabled="authStore.loading" tabindex="-1" :aria-label="showConfirmPassword ? 'Hide password' : 'Show password'">
+              <div class="col-md-6">
+                <label for="confirm_password" class="form-label">
+                  <i class="bi bi-lock-fill me-2"></i>Confirm password <span class="text-danger">*</span>
+                </label>
+                <div class="input-group">
+                  <input v-model="form.confirm_password" :type="showConfirmPassword ? 'text' : 'password'" class="form-control form-control-lg" :class="{ 'is-invalid': localErrors.confirm_password }" id="confirm_password" placeholder="Confirm your password" required :disabled="authStore.loading" autocomplete="new-password" />
+                  <button class="btn btn-outline-secondary" type="button" @click="showConfirmPassword = !showConfirmPassword" :disabled="authStore.loading" tabindex="-1">
                     <i class="bi" :class="showConfirmPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
                   </button>
                 </div>
-                <p v-if="localErrors.confirm_password" class="reg-error">{{ localErrors.confirm_password }}</p>
+                <div v-if="localErrors.confirm_password" class="invalid-feedback d-block">
+                  {{ localErrors.confirm_password }}
+                </div>
               </div>
             </div>
 
-            <button type="submit" class="reg-submit" :disabled="authStore.loading">
-              <span v-if="authStore.loading" class="reg-submit__loading">
-                <span class="reg-spinner" aria-hidden="true"></span>
-                Creating account...
-              </span>
-              <span v-else class="reg-submit__text">
-                <i class="bi bi-person-plus-fill me-2"></i>Create account
-              </span>
-            </button>
+            <div class="d-grid">
+              <button type="submit" class="btn btn-primary btn-lg" :disabled="authStore.loading">
+                <span v-if="authStore.loading">
+                  <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                  Creating account...
+                </span>
+                <span v-else>
+                  <i class="bi bi-person-plus me-2"></i>Register
+                </span>
+              </button>
+            </div>
           </form>
 
-          <div class="reg-footer">
-            <span class="reg-footer__text">Already have an account?</span>
-            <router-link to="/login" class="reg-footer__link">Sign in</router-link>
+          <div class="text-center mt-4">
+            <span class="text-muted">Already have an account?</span>
+            <router-link to="/login" class="ms-2 fw-semibold">Login</router-link>
           </div>
         </div>
       </div>
 
-      <footer class="reg-copy">
-        © 2025 Dokan
-      </footer>
+      <div class="text-center mt-3">
+        <small class="text-muted">
+          © 2025 Dokan Inventory System
+        </small>
+      </div>
     </div>
   </div>
 </template>
@@ -161,12 +166,7 @@ const handleRegister = async () => {
       business_name: form.business_name.trim(),
       password: form.password
     })
-    // Auto-login with the same credentials
-    await authStore.login({
-      username: form.phone.trim(),
-      password: form.password
-    })
-    router.push('/')
+    router.push({ name: 'Login', query: { registered: '1' } })
   } catch (err) {
     const data = err.response?.data
     if (data && typeof data === 'object' && !data.detail) {
@@ -180,354 +180,89 @@ const handleRegister = async () => {
 </script>
 
 <style scoped>
-.reg-page {
+.login-container {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
-  background: linear-gradient(160deg, #4f46e5 0%, #7c3aed 50%, #a855f7 100%);
-  background-attachment: fixed;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
 }
 
-.reg-page__card {
+.login-card {
   width: 100%;
-  max-width: 520px;
+  max-width: 560px;
 }
 
-/* Header */
-.reg-header {
-  text-align: center;
-  margin-bottom: 1.75rem;
+.brand-title {
+  color: white;
+  font-size: 2.5rem;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.reg-header__icon {
-  width: 56px;
-  height: 56px;
-  margin: 0 auto 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 16px;
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+.brand-title i {
+  font-size: 2.2rem;
 }
 
-.reg-header__icon i {
-  font-size: 1.75rem;
-  color: #fff;
-}
-
-.reg-header__title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: -0.02em;
-  margin: 0 0 0.25rem;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.reg-header__subtitle {
-  font-size: 0.9375rem;
-  color: rgba(255, 255, 255, 0.85);
-  margin: 0;
-  font-weight: 400;
-}
-
-/* Form box */
-.reg-box {
-  background: #fff;
-  border-radius: 20px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25),
-    0 0 0 1px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-}
-
-.reg-box__inner {
-  padding: 2rem 1.75rem;
-}
-
-.reg-form-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0 0 0.25rem;
-  letter-spacing: -0.01em;
-}
-
-.reg-form-desc {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin: 0 0 1.5rem;
-}
-
-/* Alert */
-.reg-alert {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  padding: 0.875rem 1rem;
-  border-radius: 12px;
-  margin-bottom: 1.25rem;
-  font-size: 0.875rem;
-  position: relative;
-}
-
-.reg-alert--error {
-  background: #fef2f2;
-  color: #b91c1c;
-  border: 1px solid #fecaca;
-}
-
-.reg-alert__close {
-  margin-left: auto;
-  padding: 0.25rem;
-  background: none;
+.card {
   border: none;
-  color: inherit;
-  opacity: 0.8;
-  cursor: pointer;
-  border-radius: 6px;
-  line-height: 1;
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
 }
 
-.reg-alert__close:hover {
-  opacity: 1;
-  background: rgba(0, 0, 0, 0.06);
+.card-body {
+  padding: 2rem;
 }
 
-/* Form layout */
-.reg-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
+.form-control:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
 }
 
-.reg-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+.form-control.is-invalid {
+  border-color: #dc3545;
 }
 
-@media (max-width: 576px) {
-  .reg-row {
-    grid-template-columns: 1fr;
-  }
+.invalid-feedback.d-block {
+  color: #dc3545;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
 }
 
-.reg-field {
-  min-width: 0;
-}
-
-.reg-field--full {
-  grid-column: 1 / -1;
-}
-
-.reg-label {
-  display: block;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: #374151;
-  margin-bottom: 0.375rem;
-}
-
-.reg-required {
-  color: #dc2626;
-}
-
-.reg-optional {
-  font-weight: 400;
-  color: #9ca3af;
-}
-
-/* Input */
-.reg-input-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.reg-input-icon {
-  position: absolute;
-  left: 1rem;
-  font-size: 1rem;
-  color: #9ca3af;
-  pointer-events: none;
-  z-index: 1;
-  transition: color 0.2s ease;
-}
-
-.reg-input {
-  width: 100%;
-  padding: 0.625rem 1rem 0.625rem 2.75rem;
-  font-size: 0.9375rem;
-  line-height: 1.5;
-  color: #1f2937;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-}
-
-.reg-input::placeholder {
-  color: #9ca3af;
-}
-
-.reg-input:hover:not(:disabled) {
-  background: #fff;
-  border-color: #d1d5db;
-}
-
-.reg-input:focus {
-  outline: none;
-  background: #fff;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-}
-
-.reg-input-wrap:focus-within .reg-input-icon {
-  color: #6366f1;
-}
-
-.reg-input--invalid {
-  border-color: #f87171;
-  background: #fff;
-}
-
-.reg-input--invalid:focus {
-  border-color: #ef4444;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
-}
-
-.reg-input-toggle {
-  position: absolute;
-  right: 0.5rem;
-  padding: 0.375rem;
-  background: none;
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: none;
-  color: #6b7280;
-  cursor: pointer;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.2s ease, background 0.2s ease;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.reg-input-toggle:hover:not(:disabled) {
-  color: #374151;
-  background: #f3f4f6;
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+  background: linear-gradient(135deg, #5568d3 0%, #6a3f8c 100%);
 }
 
-.reg-input-toggle:disabled {
-  opacity: 0.5;
+.btn-primary:disabled {
+  opacity: 0.7;
   cursor: not-allowed;
 }
 
-.reg-input-wrap .reg-input {
-  padding-right: 2.75rem;
+.input-group .btn-outline-secondary {
+  border-color: #ced4da;
 }
 
-.reg-error {
-  font-size: 0.8125rem;
-  color: #dc2626;
-  margin: 0.375rem 0 0;
-}
-
-/* Submit */
-.reg-submit {
-  width: 100%;
-  padding: 0.75rem 1.25rem;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #fff;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  margin-top: 0.5rem;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
-}
-
-.reg-submit:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
-}
-
-.reg-submit:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.reg-submit:disabled {
-  opacity: 0.75;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.reg-submit__loading {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.reg-spinner {
-  width: 1.25rem;
-  height: 1.25rem;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: reg-spin 0.7s linear infinite;
-}
-
-@keyframes reg-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Footer link */
-.reg-footer {
-  text-align: center;
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #f3f4f6;
-}
-
-.reg-footer__text {
-  font-size: 0.875rem;
-  color: #6b7280;
-}
-
-.reg-footer__link {
-  margin-left: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #6366f1;
-  text-decoration: none;
-  transition: color 0.2s ease;
-}
-
-.reg-footer__link:hover {
-  color: #4f46e5;
-}
-
-.reg-copy {
-  text-align: center;
-  margin-top: 1.25rem;
-  font-size: 0.8125rem;
-  color: rgba(255, 255, 255, 0.7);
+.input-group .btn-outline-secondary:hover:not(:disabled) {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
 }
 
 @media (max-width: 576px) {
-  .reg-header__title {
-    font-size: 1.75rem;
+  .brand-title {
+    font-size: 2rem;
   }
 
-  .reg-box__inner {
-    padding: 1.5rem 1.25rem;
+  .card-body {
+    padding: 1.5rem;
   }
 }
 </style>

@@ -21,9 +21,9 @@
           <form @submit.prevent="handleLogin">
             <div class="mb-3">
               <label for="username" class="form-label">
-                <i class="bi bi-person me-2"></i>Username
+                <i class="bi bi-person me-2"></i>Username, email or phone
               </label>
-              <input v-model="credentials.username" type="text" class="form-control form-control-lg" id="username" placeholder="Enter your username" required :disabled="authStore.loading" autocomplete="username" />
+              <input v-model="credentials.username" type="text" class="form-control form-control-lg" id="username" placeholder="Username, email or phone" required :disabled="authStore.loading" autocomplete="username" />
             </div>
 
             <div class="mb-4">

@@ -21,4 +21,19 @@ export const profileApi = {
   updateCurrentCompany(data) {
     return api.patch(`${BASE}/company/current/`, data);
   },
+  getCompanyUsers() {
+    return api.get(`${BASE}/users/`);
+  },
+  updateCompanyUser(userId, data) {
+    return api.patch(`${BASE}/users/${userId}/`, data);
+  },
+  removeCompanyUser(userId) {
+    return api.delete(`${BASE}/users/${userId}/`);
+  },
+  updateCompanyUserProfile(userId, data) {
+    return api.patch(`${BASE}/users/${userId}/profile/`, data);
+  },
+  createUser(data) {
+    return api.post(`${BASE}/users/create/`, data);
+  },
 };

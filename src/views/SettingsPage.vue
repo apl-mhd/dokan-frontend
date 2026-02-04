@@ -3,17 +3,23 @@
     <PageHeader title="Settings" icon="bi-gear" />
 
     <div class="settings-container">
-      <!-- 1. User / Profile section (first) -->
+      <!-- User section -->
       <section class="settings-section">
-        <div class="settings-section__header">
-          <div class="settings-section__icon settings-section__icon--user">
-            <i class="bi bi-person"></i>
+        <div class="settings-section__header settings-section__header--with-action">
+          <div class="d-flex align-items-center gap-3 flex-grow-1">
+            <div class="settings-section__icon settings-section__icon--user">
+              <i class="bi bi-person"></i>
+            </div>
+            <div>
+              <h2 class="settings-section__title">Users</h2>
+              <p class="settings-section__desc">Manage company users.</p>
+            </div>
           </div>
-          <div>
-            <h2 class="settings-section__title">Profile</h2>
-            <p class="settings-section__desc">Update your account details and password.</p>
-          </div>
+          <button v-if="company.id" type="button" class="settings-btn settings-btn--primary" @click="openCreateUserModal">
+            <i class="bi bi-person-plus me-2"></i>Add user
+          </button>
         </div>
+
         <div class="settings-section__body">
           <div v-if="profileError" class="settings-alert settings-alert--error">
             <i class="bi bi-exclamation-circle me-2"></i>{{ profileError }}
@@ -28,152 +34,241 @@
             </button>
           </div>
 
-          <form @submit.prevent="saveProfile" class="settings-form">
-            <div class="settings-form__row">
-              <div class="settings-field">
-                <label class="settings-label">Username</label>
-                <input v-model="profile.username" type="text" class="settings-input" :class="{ 'settings-input--invalid': profileErrors.username }" placeholder="Username" required />
-                <p v-if="profileErrors.username" class="settings-error">
-                  {{ Array.isArray(profileErrors.username) ? profileErrors.username[0] : profileErrors.username }}
-                </p>
-              </div>
-              <div class="settings-field">
-                <label class="settings-label">Email</label>
-                <input v-model="profile.email" type="email" class="settings-input" :class="{ 'settings-input--invalid': profileErrors.email }" placeholder="you@example.com" />
-                <p v-if="profileErrors.email" class="settings-error">
-                  {{ Array.isArray(profileErrors.email) ? profileErrors.email[0] : profileErrors.email }}
-                </p>
-              </div>
-            </div>
-            <div class="settings-form__row">
-              <div class="settings-field">
-                <label class="settings-label">First name</label>
-                <input v-model="profile.first_name" type="text" class="settings-input" placeholder="First name" />
-              </div>
-              <div class="settings-field">
-                <label class="settings-label">Last name</label>
-                <input v-model="profile.last_name" type="text" class="settings-input" placeholder="Last name" />
-              </div>
-            </div>
-            <button type="submit" class="settings-btn settings-btn--primary" :disabled="profileSaving">
-              <span v-if="profileSaving" class="settings-spinner"></span>
-              <span v-else><i class="bi bi-check2 me-2"></i>Save profile</span>
-            </button>
-          </form>
-
-          <div class="settings-divider">
-            <span>Change password</span>
+          <div class="settings-table-wrap">
+            <table class="settings-table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>First name</th>
+                  <th>Last name</th>
+                  <th>Status</th>
+                  <th class="settings-table__actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="companyUsersLoading" key="loading">
+                  <td colspan="7" class="text-muted text-center py-4">Loading users…</td>
+                </tr>
+                <tr v-else-if="!company.id" key="no-company">
+                  <td colspan="7" class="text-muted text-center py-4">No company. Create one to manage users.</td>
+                </tr>
+                <tr v-else-if="companyUsers.length === 0" key="no-users">
+                  <td colspan="7" class="text-muted text-center py-4">No users in this company yet. Add a user above.</td>
+                </tr>
+                <tr v-else v-for="u in companyUsers" :key="u.id" class="settings-table__row" @click="openUserModal(u)">
+                  <td>{{ u.username || "—" }}</td>
+                  <td>{{ u.email || "—" }}</td>
+                  <td>{{ u.phone || "—" }}</td>
+                  <td>{{ u.first_name || "—" }}</td>
+                  <td>{{ u.last_name || "—" }}</td>
+                  <td>
+                    <span class="settings-badge" :class="u.is_active ? 'settings-badge--active' : 'settings-badge--inactive'">
+                      {{ u.is_active ? "Active" : "Inactive" }}
+                    </span>
+                  </td>
+                  <td class="settings-table__actions">
+                    <button type="button" class="settings-btn settings-btn--sm settings-btn--secondary me-2" @click.stop="openUserModal(u)" title="Edit user" aria-label="Edit user">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <template v-if="u.user_id !== profile.id">
+                      <button type="button" class="settings-btn settings-btn--sm settings-btn--danger" :disabled="companyUserActionLoading" @click.stop="removeCompanyUser(u)" title="Remove from company" aria-label="Remove from company">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </template>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
-          <div v-if="passwordError" class="settings-alert settings-alert--error">
-            <i class="bi bi-exclamation-circle me-2"></i>{{ passwordError }}
-            <button type="button" class="settings-alert__close" @click="passwordError = null" aria-label="Close">
-              <i class="bi bi-x-lg"></i>
-            </button>
-          </div>
-          <div v-if="passwordSuccess" class="settings-alert settings-alert--success">
-            <i class="bi bi-check-circle me-2"></i>{{ passwordSuccess }}
-            <button type="button" class="settings-alert__close" @click="passwordSuccess = null" aria-label="Close">
-              <i class="bi bi-x-lg"></i>
-            </button>
-          </div>
-          <form @submit.prevent="changePassword" class="settings-form">
-            <div class="settings-form__row">
-              <div class="settings-field">
-                <label class="settings-label">Current password</label>
-                <input v-model="passwordForm.old_password" type="password" class="settings-input" :class="{ 'settings-input--invalid': passwordErrors.old_password }" placeholder="Current password" />
-                <p v-if="passwordErrors.old_password" class="settings-error">
-                  {{ Array.isArray(passwordErrors.old_password) ? passwordErrors.old_password[0] : passwordErrors.old_password }}
-                </p>
-              </div>
-              <div class="settings-field">
-                <label class="settings-label">New password</label>
-                <input v-model="passwordForm.new_password" type="password" class="settings-input" :class="{ 'settings-input--invalid': passwordErrors.new_password }" placeholder="New password" />
-                <p v-if="passwordErrors.new_password" class="settings-error">
-                  {{ Array.isArray(passwordErrors.new_password) ? passwordErrors.new_password[0] : passwordErrors.new_password }}
-                </p>
+          <!-- User Edit Modal -->
+          <div class="modal fade" tabindex="-1" aria-hidden="true" ref="userModalRef">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Edit user</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <form @submit.prevent="saveUserFromModal" id="user-modal-form">
+                    <div class="row g-3">
+                      <div class="col-12">
+                        <label class="form-label">Username</label>
+                        <input v-model="userModalForm.username" type="text" class="form-control" :class="{ 'is-invalid': profileErrors.username }" placeholder="Username" />
+                        <div v-if="profileErrors.username" class="invalid-feedback d-block">
+                          {{ Array.isArray(profileErrors.username) ? profileErrors.username[0] : profileErrors.username }}
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Email <span class="text-muted">(optional)</span></label>
+                        <input v-model="userModalForm.email" type="email" class="form-control" :class="{ 'is-invalid': profileErrors.email }" placeholder="you@example.com" />
+                        <div v-if="profileErrors.email" class="invalid-feedback d-block">
+                          {{ Array.isArray(profileErrors.email) ? profileErrors.email[0] : profileErrors.email }}
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Phone <span class="text-muted">(optional)</span></label>
+                        <input v-model="userModalForm.phone" type="tel" class="form-control" :class="{ 'is-invalid': profileErrors.phone }" placeholder="Phone number" />
+                        <div v-if="profileErrors.phone" class="invalid-feedback d-block">
+                          {{ Array.isArray(profileErrors.phone) ? profileErrors.phone[0] : profileErrors.phone }}
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">First name</label>
+                        <input v-model="userModalForm.first_name" type="text" class="form-control" placeholder="First name" />
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Last name</label>
+                        <input v-model="userModalForm.last_name" type="text" class="form-control" placeholder="Last name" />
+                      </div>
+
+                      <div class="col-12">
+                        <div class="form-check form-switch">
+                          <input id="user-active-switch" v-model="userModalForm.is_active" class="form-check-input" type="checkbox" />
+                          <label class="form-check-label" for="user-active-switch">Active</label>
+                        </div>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                  <button type="submit" form="user-modal-form" class="btn btn-primary" :disabled="profileSaving">
+                    <span v-if="profileSaving" class="spinner-border spinner-border-sm me-2"></span>
+                    Save
+                  </button>
+                </div>
               </div>
             </div>
-            <div class="settings-field settings-field--half">
-              <label class="settings-label">Confirm new password</label>
-              <input v-model="passwordForm.confirm_password" type="password" class="settings-input" :class="{ 'settings-input--invalid': passwordConfirmError }" placeholder="Confirm new password" />
-              <p v-if="passwordConfirmError" class="settings-error">{{ passwordConfirmError }}</p>
+          </div>
+
+          <!-- Create User Modal -->
+          <div class="modal fade" tabindex="-1" aria-hidden="true" ref="createUserModalRef">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Add user</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <div v-if="createUserError" class="alert alert-danger py-2 mb-3">{{ createUserError }}</div>
+                  <form @submit.prevent="saveCreateUser" id="create-user-form">
+                    <div class="row g-3">
+                      <div class="col-12">
+                        <label class="form-label">Username <span class="text-danger">*</span></label>
+                        <input v-model="createUserForm.username" type="text" class="form-control" :class="{ 'is-invalid': createUserErrors.username }" placeholder="Username" />
+                        <div v-if="createUserErrors.username" class="invalid-feedback d-block">
+                          {{ Array.isArray(createUserErrors.username) ? createUserErrors.username[0] : createUserErrors.username }}
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Email <span class="text-muted">(optional)</span></label>
+                        <input v-model="createUserForm.email" type="email" class="form-control" :class="{ 'is-invalid': createUserErrors.email }" placeholder="you@example.com" />
+                        <div v-if="createUserErrors.email" class="invalid-feedback d-block">
+                          {{ Array.isArray(createUserErrors.email) ? createUserErrors.email[0] : createUserErrors.email }}
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Phone <span class="text-muted">(optional)</span></label>
+                        <input v-model="createUserForm.phone" type="tel" class="form-control" :class="{ 'is-invalid': createUserErrors.phone }" placeholder="Phone number" />
+                        <div v-if="createUserErrors.phone" class="invalid-feedback d-block">
+                          {{ Array.isArray(createUserErrors.phone) ? createUserErrors.phone[0] : createUserErrors.phone }}
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">First name</label>
+                        <input v-model="createUserForm.first_name" type="text" class="form-control" placeholder="First name" />
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Last name</label>
+                        <input v-model="createUserForm.last_name" type="text" class="form-control" placeholder="Last name" />
+                      </div>
+                      <div class="col-12">
+                        <label class="form-label">Password <span class="text-danger">*</span></label>
+                        <input v-model="createUserForm.password" type="password" class="form-control" :class="{ 'is-invalid': createUserErrors.password }" placeholder="Password" />
+                        <div v-if="createUserErrors.password" class="invalid-feedback d-block">
+                          {{ Array.isArray(createUserErrors.password) ? createUserErrors.password[0] : createUserErrors.password }}
+                        </div>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                  <button type="submit" form="create-user-form" class="btn btn-primary" :disabled="createUserSaving">
+                    <span v-if="createUserSaving" class="spinner-border spinner-border-sm me-2"></span>
+                    Create user
+                  </button>
+                </div>
+              </div>
             </div>
-            <button type="submit" class="settings-btn settings-btn--secondary" :disabled="passwordSaving">
-              <span v-if="passwordSaving" class="settings-spinner settings-spinner--secondary"></span>
-              <span v-else><i class="bi bi-key me-2"></i>Change password</span>
-            </button>
-          </form>
+          </div>
         </div>
       </section>
 
-      <!-- 2. Company section (second) -->
+      <!-- Company section (minimal update form) -->
       <section class="settings-section">
         <div class="settings-section__header">
-          <div class="settings-section__icon settings-section__icon--company">
-            <i class="bi bi-building"></i>
-          </div>
-          <div>
-            <h2 class="settings-section__title">Company</h2>
-            <p class="settings-section__desc">Update your business details.</p>
+          <div class="d-flex align-items-center gap-3">
+            <div class="settings-section__icon settings-section__icon--company">
+              <i class="bi bi-building"></i>
+            </div>
+            <div>
+              <h2 class="settings-section__title">Company</h2>
+              <p class="settings-section__desc">Update company details.</p>
+            </div>
           </div>
         </div>
         <div class="settings-section__body">
-          <div v-if="companyLoading && !company.id" class="settings-loading">
-            <span class="settings-spinner settings-spinner--lg"></span>
-            <span>Loading company…</span>
+          <div v-if="companyError" class="settings-alert settings-alert--error">
+            <i class="bi bi-exclamation-circle me-2"></i>{{ companyError }}
+            <button type="button" class="settings-alert__close" @click="companyError = null" aria-label="Close">
+              <i class="bi bi-x-lg"></i>
+            </button>
           </div>
-          <template v-else-if="company.id">
-            <div v-if="companyError" class="settings-alert settings-alert--error">
-              <i class="bi bi-exclamation-circle me-2"></i>{{ companyError }}
-              <button type="button" class="settings-alert__close" @click="companyError = null" aria-label="Close">
-                <i class="bi bi-x-lg"></i>
-              </button>
-            </div>
-            <div v-if="companySuccess" class="settings-alert settings-alert--success">
-              <i class="bi bi-check-circle me-2"></i>{{ companySuccess }}
-              <button type="button" class="settings-alert__close" @click="companySuccess = null" aria-label="Close">
-                <i class="bi bi-x-lg"></i>
-              </button>
-            </div>
-            <form @submit.prevent="saveCompany" class="settings-form">
-              <div class="settings-form__row">
-                <div class="settings-field">
-                  <label class="settings-label">Business name</label>
-                  <input v-model="company.name" type="text" class="settings-input" :class="{ 'settings-input--invalid': companyErrors.name }" placeholder="Your business name" required />
-                  <p v-if="companyErrors.name" class="settings-error">
-                    {{ Array.isArray(companyErrors.name) ? companyErrors.name[0] : companyErrors.name }}
-                  </p>
-                </div>
-                <div class="settings-field">
-                  <label class="settings-label">Phone</label>
-                  <input v-model="company.phone" type="text" class="settings-input" :class="{ 'settings-input--invalid': companyErrors.phone }" placeholder="Phone number" required />
-                  <p v-if="companyErrors.phone" class="settings-error">
-                    {{ Array.isArray(companyErrors.phone) ? companyErrors.phone[0] : companyErrors.phone }}
-                  </p>
-                </div>
-              </div>
-              <div class="settings-field">
-                <label class="settings-label">Email</label>
-                <input v-model="company.email" type="email" class="settings-input" placeholder="business@example.com" />
-              </div>
-              <div class="settings-field">
-                <label class="settings-label">Address</label>
-                <textarea v-model="company.address" class="settings-input settings-input--textarea" rows="2" placeholder="Address"></textarea>
-              </div>
-              <div class="settings-field">
-                <label class="settings-label">Website</label>
-                <input v-model="company.website" type="url" class="settings-input" placeholder="https://..." />
-              </div>
-              <button type="submit" class="settings-btn settings-btn--primary" :disabled="companySaving">
-                <span v-if="companySaving" class="settings-spinner"></span>
-                <span v-else><i class="bi bi-check2 me-2"></i>Save company</span>
-              </button>
-            </form>
-          </template>
-          <div v-else class="settings-empty">
-            <i class="bi bi-building me-2"></i>No company associated with your account.
+          <div v-if="companySuccess" class="settings-alert settings-alert--success">
+            <i class="bi bi-check-circle me-2"></i>{{ companySuccess }}
+            <button type="button" class="settings-alert__close" @click="companySuccess = null" aria-label="Close">
+              <i class="bi bi-x-lg"></i>
+            </button>
           </div>
+
+          <form class="settings-form" @submit.prevent="saveCompany">
+            <div class="settings-form__grid">
+              <div class="settings-field">
+                <label class="settings-label">Name</label>
+                <input v-model="company.name" type="text" class="settings-input" :class="{ 'settings-input--invalid': companyErrors.name }" placeholder="Business name" required />
+                <p v-if="companyErrors.name" class="settings-error">{{ Array.isArray(companyErrors.name) ? companyErrors.name[0] : companyErrors.name }}</p>
+              </div>
+              <div class="settings-field">
+                <label class="settings-label">Phone</label>
+                <input v-model="company.phone" type="text" class="settings-input" :class="{ 'settings-input--invalid': companyErrors.phone }" placeholder="Phone number" required />
+                <p v-if="companyErrors.phone" class="settings-error">{{ Array.isArray(companyErrors.phone) ? companyErrors.phone[0] : companyErrors.phone }}</p>
+              </div>
+              <div class="settings-field">
+                <label class="settings-label">Email <span class="text-muted">(optional)</span></label>
+                <input v-model="company.email" type="email" class="settings-input" :class="{ 'settings-input--invalid': companyErrors.email }" placeholder="you@example.com" />
+                <p v-if="companyErrors.email" class="settings-error">{{ Array.isArray(companyErrors.email) ? companyErrors.email[0] : companyErrors.email }}</p>
+              </div>
+              <div class="settings-field">
+                <label class="settings-label">Address <span class="text-muted">(optional)</span></label>
+                <input v-model="company.address" type="text" class="settings-input" :class="{ 'settings-input--invalid': companyErrors.address }" placeholder="Address" />
+                <p v-if="companyErrors.address" class="settings-error">{{ Array.isArray(companyErrors.address) ? companyErrors.address[0] : companyErrors.address }}</p>
+              </div>
+              <div class="settings-field">
+                <label class="settings-label">Website <span class="text-muted">(optional)</span></label>
+                <input v-model="company.website" type="url" class="settings-input" :class="{ 'settings-input--invalid': companyErrors.website }" placeholder="https://example.com" />
+                <p v-if="companyErrors.website" class="settings-error">{{ Array.isArray(companyErrors.website) ? companyErrors.website[0] : companyErrors.website }}</p>
+              </div>
+            </div>
+
+            <button type="submit" class="settings-btn settings-btn--primary" :disabled="companySaving">
+              <span v-if="companySaving" class="settings-spinner"></span>
+              <span v-else>Save company</span>
+            </button>
+          </form>
         </div>
       </section>
     </div>
@@ -183,49 +278,42 @@
 <script setup>
 import { ref, reactive, onMounted } from "vue";
 import PageHeader from "../components/common/PageHeader.vue";
+import { useModal } from "../composables/useModal";
 import { profileApi } from "../api/profile.api.js";
 
-const profile = reactive({
-  username: "",
-  email: "",
-  first_name: "",
-  last_name: "",
-});
+const { modalRef: userModalRef, show: showUserModal, hide: hideUserModal } = useModal();
+const { modalRef: createUserModalRef, show: showCreateUserModal, hide: hideCreateUserModal } = useModal();
+
+const profile = reactive({ id: null, username: "", email: "", phone: "", first_name: "", last_name: "" });
+const userModalForm = reactive({ username: "", email: "", phone: "", first_name: "", last_name: "", is_active: true });
+const editingUserId = ref(null);
+
 const profileErrors = ref({});
 const profileError = ref(null);
 const profileSuccess = ref(null);
 const profileSaving = ref(false);
 
-const passwordForm = reactive({
-  old_password: "",
-  new_password: "",
-  confirm_password: "",
-});
-const passwordErrors = ref({});
-const passwordError = ref(null);
-const passwordSuccess = ref(null);
-const passwordSaving = ref(false);
-
-const company = reactive({
-  id: null,
-  name: "",
-  phone: "",
-  email: "",
-  address: "",
-  website: "",
-  is_active: true,
-});
+const company = reactive({ id: null, name: "", phone: "", email: "", address: "", website: "", is_active: true });
 const companyErrors = ref({});
 const companyError = ref(null);
 const companySuccess = ref(null);
 const companySaving = ref(false);
 const companyLoading = ref(true);
 
-const passwordConfirmError = ref("");
+const companyUsers = ref([]);
+const companyUsersLoading = ref(false);
+const companyUserActionLoading = ref(false);
+
+const createUserForm = reactive({ username: "", email: "", phone: "", first_name: "", last_name: "", password: "" });
+const createUserErrors = ref({});
+const createUserError = ref(null);
+const createUserSaving = ref(false);
 
 function setProfile(data) {
+  profile.id = data.id ?? null;
   profile.username = data.username ?? "";
   profile.email = data.email ?? "";
+  profile.phone = data.phone ?? "";
   profile.first_name = data.first_name ?? "";
   profile.last_name = data.last_name ?? "";
 }
@@ -249,15 +337,30 @@ async function loadProfile() {
   }
 }
 
+async function loadCompanyUsers() {
+  if (!company.id) return;
+  companyUsersLoading.value = true;
+  try {
+    const res = await profileApi.getCompanyUsers();
+    companyUsers.value = res.data ?? [];
+  } catch {
+    companyUsers.value = [];
+  } finally {
+    companyUsersLoading.value = false;
+  }
+}
+
 async function loadCompany() {
   companyLoading.value = true;
   companyError.value = null;
   try {
     const res = await profileApi.getCurrentCompany();
     setCompany(res.data);
+    if (company.id) await loadCompanyUsers();
   } catch (err) {
     if (err.response?.status === 404) {
       company.id = null;
+      companyUsers.value = [];
     } else {
       companyError.value = err.response?.data?.detail || "Failed to load company.";
     }
@@ -266,63 +369,116 @@ async function loadCompany() {
   }
 }
 
-async function saveProfile() {
+function openUserModal(user = null) {
+  if (user) {
+    editingUserId.value = user.user_id;
+    userModalForm.username = user.username ?? "";
+    userModalForm.email = user.email ?? "";
+    userModalForm.phone = user.phone ?? "";
+    userModalForm.first_name = user.first_name ?? "";
+    userModalForm.last_name = user.last_name ?? "";
+    userModalForm.is_active = user.is_active ?? true;
+  } else {
+    editingUserId.value = profile.id;
+    userModalForm.username = profile.username;
+    userModalForm.email = profile.email;
+    userModalForm.phone = profile.phone ?? "";
+    userModalForm.first_name = profile.first_name;
+    userModalForm.last_name = profile.last_name;
+    userModalForm.is_active = true;
+  }
+  profileErrors.value = {};
+  showUserModal();
+}
+
+function openCreateUserModal() {
+  createUserForm.username = "";
+  createUserForm.email = "";
+  createUserForm.phone = "";
+  createUserForm.first_name = "";
+  createUserForm.last_name = "";
+  createUserForm.password = "";
+  createUserErrors.value = {};
+  createUserError.value = null;
+  showCreateUserModal();
+}
+
+async function saveCreateUser() {
+  createUserErrors.value = {};
+  createUserError.value = null;
+  if (!company.id) {
+    createUserError.value = "No company selected.";
+    return;
+  }
+  createUserSaving.value = true;
+  try {
+    await profileApi.createUser({
+      username: createUserForm.username.trim(),
+      email: createUserForm.email.trim(),
+      phone: createUserForm.phone?.trim() || "",
+      password: createUserForm.password,
+      first_name: createUserForm.first_name.trim(),
+      last_name: createUserForm.last_name.trim(),
+      company_id: company.id,
+    });
+    profileSuccess.value = "User created.";
+    hideCreateUserModal();
+    await loadCompanyUsers();
+  } catch (err) {
+    const data = err.response?.data;
+    if (data && typeof data === "object" && !data.detail) createUserErrors.value = data;
+    else createUserError.value = data?.detail || "Failed to create user.";
+  } finally {
+    createUserSaving.value = false;
+  }
+}
+
+async function saveUserFromModal() {
   profileErrors.value = {};
   profileError.value = null;
   profileSuccess.value = null;
   profileSaving.value = true;
   try {
-    const res = await profileApi.updateProfile({
-      username: profile.username.trim(),
-      email: profile.email.trim() || undefined,
-      first_name: profile.first_name.trim(),
-      last_name: profile.last_name.trim(),
-    });
-    setProfile(res.data);
-    profileSuccess.value = "Profile updated.";
-  } catch (err) {
-    if (err.response?.data && typeof err.response.data === "object" && !err.response.data.detail) {
-      profileErrors.value = err.response.data;
-    } else {
-      profileError.value = err.response?.data?.detail || "Failed to update profile.";
+    const payload = {
+      username: userModalForm.username.trim(),
+      email: userModalForm.email.trim() || undefined,
+      phone: userModalForm.phone?.trim() || undefined,
+      first_name: userModalForm.first_name.trim(),
+      last_name: userModalForm.last_name.trim(),
+    };
+    const isSelf = (editingUserId.value ?? profile.id) === profile.id;
+    const res = isSelf ? await profileApi.updateProfile(payload) : await profileApi.updateCompanyUserProfile(editingUserId.value, payload);
+    if (isSelf) setProfile(res.data);
+    if (!isSelf) {
+      await profileApi.updateCompanyUser(editingUserId.value, { is_active: !!userModalForm.is_active });
     }
+    await loadCompanyUsers();
+    profileSuccess.value = "User updated.";
+    hideUserModal();
+  } catch (err) {
+    if (err.response?.data && typeof err.response.data === "object" && !err.response.data.detail) profileErrors.value = err.response.data;
+    else profileError.value = err.response?.data?.detail || "Failed to update user.";
   } finally {
     profileSaving.value = false;
   }
 }
 
-function validatePasswordForm() {
-  passwordConfirmError.value = "";
-  if (!passwordForm.new_password) return false;
-  if (passwordForm.new_password !== passwordForm.confirm_password) {
-    passwordConfirmError.value = "Passwords do not match.";
-    return false;
-  }
-  return true;
-}
+async function removeCompanyUser(u) {
+  if (!u?.user_id) return;
+  const ok = window.confirm(`Remove "${u.username}" from this company? They will lose access.`);
+  if (!ok) return;
 
-async function changePassword() {
-  passwordErrors.value = {};
-  passwordError.value = null;
-  passwordSuccess.value = null;
-  passwordConfirmError.value = "";
-  if (!validatePasswordForm()) return;
-
-  passwordSaving.value = true;
+  companyUserActionLoading.value = true;
+  profileError.value = null;
+  profileSuccess.value = null;
   try {
-    await profileApi.changePassword(passwordForm.old_password, passwordForm.new_password);
-    passwordSuccess.value = "Password updated.";
-    passwordForm.old_password = "";
-    passwordForm.new_password = "";
-    passwordForm.confirm_password = "";
+    await profileApi.removeCompanyUser(u.user_id);
+    profileSuccess.value = "User removed from company.";
+    await loadCompanyUsers();
   } catch (err) {
-    if (err.response?.data && typeof err.response.data === "object" && !err.response.data.detail) {
-      passwordErrors.value = err.response.data;
-    } else {
-      passwordError.value = err.response?.data?.detail || "Failed to change password.";
-    }
+    profileError.value = err.response?.data?.detail || "Failed to remove user from company.";
   } finally {
-    passwordSaving.value = false;
+    companyUserActionLoading.value = false;
   }
 }
 
@@ -333,20 +489,18 @@ async function saveCompany() {
   companySaving.value = true;
   try {
     const res = await profileApi.updateCurrentCompany({
-      name: company.name.trim(),
-      phone: company.phone.trim(),
-      email: company.email?.trim() || "",
-      address: company.address?.trim() || "",
-      website: company.website?.trim() || "",
+      name: company.name,
+      phone: company.phone,
+      email: company.email || null,
+      address: company.address || null,
+      website: company.website || null,
     });
     setCompany(res.data);
     companySuccess.value = "Company updated.";
   } catch (err) {
-    if (err.response?.data && typeof err.response.data === "object" && !err.response.data.detail) {
-      companyErrors.value = err.response.data;
-    } else {
-      companyError.value = err.response?.data?.detail || "Failed to update company.";
-    }
+    const data = err.response?.data;
+    if (data && typeof data === "object" && !data.detail) companyErrors.value = data;
+    else companyError.value = data?.detail || "Failed to update company.";
   } finally {
     companySaving.value = false;
   }
@@ -360,15 +514,13 @@ onMounted(() => {
 
 <style scoped>
 .settings-page {
-  max-width: 720px;
+  width: 100%;
 }
-
 .settings-container {
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
 }
-
 .settings-section {
   background: #fff;
   border-radius: 16px;
@@ -376,211 +528,126 @@ onMounted(() => {
   border: 1px solid #e5e7eb;
   overflow: hidden;
 }
-
 .settings-section__header {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  padding: 1.25rem 1.5rem;
-  background: #fafafa;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.settings-section__icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  padding: 1.25rem 1.25rem;
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 1.35rem;
-  flex-shrink: 0;
+  justify-content: space-between;
+  border-bottom: 1px solid #eef2f7;
 }
-
+.settings-section__header--with-action {
+  gap: 1rem;
+}
+.settings-section__icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+}
 .settings-section__icon--user {
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  color: #fff;
 }
-
 .settings-section__icon--company {
-  background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
-  color: #fff;
+  background: linear-gradient(135deg, #0ea5e9 0%, #22c55e 100%);
 }
-
 .settings-section__title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0 0 0.25rem;
-}
-
-.settings-section__desc {
-  font-size: 0.875rem;
-  color: #6b7280;
   margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
 }
-
+.settings-section__desc {
+  margin: 0.2rem 0 0;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
 .settings-section__body {
-  padding: 1.5rem;
+  padding: 1.25rem;
 }
-
 .settings-alert {
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border-radius: 10px;
+  justify-content: space-between;
+  gap: 0.75rem;
   margin-bottom: 1rem;
-  font-size: 0.875rem;
 }
-
 .settings-alert--error {
   background: #fef2f2;
-  color: #b91c1c;
+  color: #991b1b;
   border: 1px solid #fecaca;
 }
-
 .settings-alert--success {
-  background: #f0fdf4;
-  color: #166534;
-  border: 1px solid #bbf7d0;
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
 }
-
 .settings-alert__close {
-  margin-left: auto;
-  padding: 0.25rem;
-  background: none;
+  background: transparent;
   border: none;
   color: inherit;
-  opacity: 0.7;
   cursor: pointer;
-  border-radius: 6px;
-  line-height: 1;
 }
-
-.settings-alert__close:hover {
-  opacity: 1;
-  background: rgba(0, 0, 0, 0.06);
+.settings-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #eef2f7;
+  border-radius: 14px;
 }
-
-.settings-form {
-  margin-bottom: 0;
-}
-
-.settings-form__row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-@media (max-width: 576px) {
-  .settings-form__row {
-    grid-template-columns: 1fr;
-  }
-}
-
-.settings-field {
-  min-width: 0;
-}
-
-.settings-field--half {
-  max-width: 50%;
-}
-
-@media (max-width: 576px) {
-  .settings-field--half {
-    max-width: 100%;
-  }
-}
-
-.settings-field:not(:last-child) {
-  margin-bottom: 0;
-}
-
-.settings-form .settings-field {
-  margin-bottom: 1rem;
-}
-
-.settings-form__row .settings-field {
-  margin-bottom: 0;
-}
-
-.settings-form__row + .settings-btn,
-.settings-form .settings-field + .settings-btn {
-  margin-top: 0.5rem;
-}
-
-.settings-label {
-  display: block;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: #374151;
-  margin-bottom: 0.375rem;
-}
-
-.settings-input {
+.settings-table {
   width: 100%;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.9375rem;
-  line-height: 1.5;
-  color: #1f2937;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.settings-table thead th {
   background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-}
-
-.settings-input::placeholder {
-  color: #9ca3af;
-}
-
-.settings-input:hover:not(:disabled) {
-  background: #fff;
-  border-color: #d1d5db;
-}
-
-.settings-input:focus {
-  outline: none;
-  background: #fff;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
-}
-
-.settings-input--invalid {
-  border-color: #f87171;
-  background: #fff;
-}
-
-.settings-input--textarea {
-  resize: vertical;
-  min-height: 60px;
-}
-
-.settings-error {
-  font-size: 0.8125rem;
-  color: #dc2626;
-  margin: 0.375rem 0 0;
-}
-
-.settings-divider {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin: 1.75rem 0 1.25rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
+  text-align: left;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
   color: #6b7280;
+  padding: 0.85rem 0.9rem;
+  border-bottom: 1px solid #eef2f7;
+}
+.settings-table tbody td {
+  padding: 0.85rem 0.9rem;
+  border-bottom: 1px solid #eef2f7;
+}
+.settings-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.settings-table__actions {
+  white-space: nowrap;
+  width: 1%;
+}
+.settings-table__row {
+  cursor: pointer;
+}
+.settings-table__row:hover {
+  background: #fafafa;
 }
 
-.settings-divider::before,
-.settings-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: #e5e7eb;
+.settings-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid transparent;
 }
 
+.settings-badge--active {
+  background: #ecfdf5;
+  color: #065f46;
+  border-color: #a7f3d0;
+}
+
+.settings-badge--inactive {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
 .settings-btn {
   display: inline-flex;
   align-items: center;
@@ -593,37 +660,66 @@ onMounted(() => {
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
 }
-
+.settings-btn--sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8125rem;
+}
 .settings-btn:hover:not(:disabled) {
   transform: translateY(-1px);
 }
-
 .settings-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
   transform: none;
 }
-
 .settings-btn--primary {
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   color: #fff;
   box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
 }
-
-.settings-btn--primary:hover:not(:disabled) {
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
-}
-
-.settings-btn--secondary {
+.settings-btn--danger {
   background: #fff;
-  color: #6366f1;
-  border: 1px solid #6366f1;
+  color: #dc2626;
+  border: 1px solid #dc2626;
 }
-
-.settings-btn--secondary:hover:not(:disabled) {
-  background: #f5f3ff;
+.settings-btn--danger:hover:not(:disabled) {
+  background: #fef2f2;
 }
-
+.settings-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+@media (max-width: 768px) {
+  .settings-form__grid {
+    grid-template-columns: 1fr;
+  }
+}
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.settings-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+}
+.settings-input {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 0.6rem 0.75rem;
+}
+.settings-input--invalid {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+.settings-error {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #b91c1c;
+}
 .settings-spinner {
   width: 1.25rem;
   height: 1.25rem;
@@ -632,37 +728,10 @@ onMounted(() => {
   border-radius: 50%;
   animation: settings-spin 0.7s linear infinite;
 }
-
-.settings-spinner--lg {
-  width: 1.5rem;
-  height: 1.5rem;
-  border-width: 2px;
-}
-
-.settings-btn--secondary .settings-spinner--secondary {
-  border-color: rgba(99, 102, 241, 0.25);
-  border-top-color: #6366f1;
-}
-
 @keyframes settings-spin {
   to {
     transform: rotate(360deg);
   }
 }
-
-.settings-loading {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 2rem;
-  color: #6b7280;
-  font-size: 0.9375rem;
-}
-
-.settings-empty {
-  padding: 2rem;
-  text-align: center;
-  color: #9ca3af;
-  font-size: 0.9375rem;
-}
 </style>
+
