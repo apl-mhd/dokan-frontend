@@ -21,6 +21,7 @@ import CustomerPage from "../views/CustomerPage.vue";
 import WarehousePage from "../views/WarehousePage.vue";
 import LedgerPage from "../views/LedgerPage.vue";
 import ExpensePage from "../views/ExpensePage.vue";
+import SettingsPage from "../views/SettingsPage.vue";
 
 const routes = [
   {
@@ -135,6 +136,12 @@ const routes = [
     path: "/expense",
     name: "Expense",
     component: ExpensePage,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/settings",
+    name: "Settings",
+    component: SettingsPage,
     meta: { requiresAuth: true },
   },
 ];

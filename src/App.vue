@@ -332,6 +332,13 @@ const handleLogout = () => {
             </router-link>
           </li>
 
+          <li class="nav-item">
+            <router-link to="/settings" class="nav-link" :class="{ active: $route.path === '/settings' }" :title="sidebarOpen ? '' : 'Settings'">
+              <i class="bi bi-gear"></i>
+              <span v-show="sidebarOpen" class="ms-2">Settings</span>
+            </router-link>
+          </li>
+
         </ul>
       </div>
     </aside>
