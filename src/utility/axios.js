@@ -54,9 +54,10 @@ api.interceptors.response.use(
         const authStore = useAuthStore();
         authStore.logout();
 
-        // Redirect to login (if router is available)
+        // SPA redirect to login (avoid full page reload)
         if (window.location.pathname !== "/login") {
-          window.location.href = "/login";
+          const { default: router } = await import("../router");
+          router.push("/login");
         }
 
         return Promise.reject(refreshError);

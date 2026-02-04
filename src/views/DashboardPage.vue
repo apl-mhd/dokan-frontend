@@ -104,6 +104,17 @@
                   </ul>
                 </div>
               </div>
+              <div class="d-flex flex-wrap gap-3 align-items-center mb-2 small">
+                <span class="text-success fw-semibold">
+                  <i class="bi bi-cash-coin me-1"></i>Total Sales: {{ formatCurrency(combinedTotals.totalSales) }}
+                </span>
+                <span class="text-warning text-dark fw-semibold">
+                  <i class="bi bi-currency-dollar me-1"></i>Total Dues: {{ formatCurrency(combinedTotals.totalDues) }}
+                </span>
+                <span class="text-primary fw-semibold">
+                  <i class="bi bi-credit-card me-1"></i>Total Payments: {{ formatCurrency(combinedTotals.totalPayments) }}
+                </span>
+              </div>
               <div v-if="combinedPeriod === 'custom'" class="d-flex gap-2 align-items-center">
                 <div class="d-flex align-items-center gap-2">
                   <label class="mb-0 small">From:</label>
@@ -730,6 +741,20 @@ const duesChartOptions = {
     }
   }
 }
+
+// Totals for Sales vs Dues vs Payments (based on current filter)
+const combinedTotals = computed(() => {
+  const salesTrend = stats.value.sales?.trend || []
+  const duesTrend = stats.value.sales?.due_trend || []
+  const paymentTrend = stats.value.customer_payments?.trend || []
+  const totalSales = salesTrend.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+  const totalPayments = paymentTrend.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+  // Dues: use last value as "ending outstanding" (typical for balance-over-time), fallback to sum
+  const totalDues = duesTrend.length
+    ? (Number(duesTrend[duesTrend.length - 1].amount) || 0)
+    : duesTrend.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+  return { totalSales, totalDues, totalPayments }
+})
 
 // Combined Chart Data - Sales, Dues, and Payments
 const combinedChartData = computed(() => {
