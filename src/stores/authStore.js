@@ -13,6 +13,31 @@ export const useAuthStore = defineStore("auth", () => {
   const isAuthenticated = computed(() => !!token.value);
 
   // Actions
+  const register = async (payload) => {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      await api.post("/companies/auth/register/", payload);
+      return { ok: true };
+    } catch (err) {
+      if (
+        !err.response?.data?.detail &&
+        typeof err.response?.data === "object"
+      ) {
+        // Field errors; let the page display them
+      } else {
+        error.value =
+          err.response?.data?.detail ||
+          "Registration failed. Please check your details.";
+      }
+      console.error("Register error:", err);
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  };
+
   const login = async (credentials) => {
     loading.value = true;
     error.value = null;
@@ -117,6 +142,7 @@ export const useAuthStore = defineStore("auth", () => {
     isAuthenticated,
 
     // Actions
+    register,
     login,
     logout,
     fetchUserDetails,

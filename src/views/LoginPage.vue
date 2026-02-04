@@ -23,16 +23,7 @@
               <label for="username" class="form-label">
                 <i class="bi bi-person me-2"></i>Username
               </label>
-              <input
-                v-model="credentials.username"
-                type="text"
-                class="form-control form-control-lg"
-                id="username"
-                placeholder="Enter your username"
-                required
-                :disabled="authStore.loading"
-                autocomplete="username"
-              />
+              <input v-model="credentials.username" type="text" class="form-control form-control-lg" id="username" placeholder="Enter your username" required :disabled="authStore.loading" autocomplete="username" />
             </div>
 
             <div class="mb-4">
@@ -40,34 +31,15 @@
                 <i class="bi bi-lock me-2"></i>Password
               </label>
               <div class="input-group">
-                <input
-                  v-model="credentials.password"
-                  :type="showPassword ? 'text' : 'password'"
-                  class="form-control form-control-lg"
-                  id="password"
-                  placeholder="Enter your password"
-                  required
-                  :disabled="authStore.loading"
-                  autocomplete="current-password"
-                />
-                <button
-                  class="btn btn-outline-secondary"
-                  type="button"
-                  @click="showPassword = !showPassword"
-                  :disabled="authStore.loading"
-                  tabindex="-1"
-                >
+                <input v-model="credentials.password" :type="showPassword ? 'text' : 'password'" class="form-control form-control-lg" id="password" placeholder="Enter your password" required :disabled="authStore.loading" autocomplete="current-password" />
+                <button class="btn btn-outline-secondary" type="button" @click="showPassword = !showPassword" :disabled="authStore.loading" tabindex="-1">
                   <i class="bi" :class="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
                 </button>
               </div>
             </div>
 
             <div class="d-grid">
-              <button
-                type="submit"
-                class="btn btn-primary btn-lg"
-                :disabled="authStore.loading"
-              >
+              <button type="submit" class="btn btn-primary btn-lg" :disabled="authStore.loading">
                 <span v-if="authStore.loading">
                   <span class="spinner-border spinner-border-sm me-2" role="status"></span>
                   Logging in...
@@ -80,6 +52,10 @@
           </form>
 
           <div class="text-center mt-4">
+            <span class="text-muted">Don't have an account?</span>
+            <router-link to="/register" class="ms-2 fw-semibold">Register</router-link>
+          </div>
+          <div class="text-center mt-2">
             <small class="text-muted">
               Demo: <strong>admin</strong> / <strong>admin123</strong>
             </small>
@@ -194,7 +170,7 @@ const handleLogin = async () => {
   .brand-title {
     font-size: 2rem;
   }
-  
+
   .card-body {
     padding: 1.5rem;
   }
