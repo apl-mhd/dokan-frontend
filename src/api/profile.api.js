@@ -33,6 +33,11 @@ export const profileApi = {
   updateCompanyUserProfile(userId, data) {
     return api.patch(`${BASE}/users/${userId}/profile/`, data);
   },
+  setCompanyUserPassword(userId, newPassword) {
+    return api.post(`${BASE}/users/${userId}/password/`, {
+      new_password: newPassword,
+    });
+  },
   createUser(data) {
     return api.post(`${BASE}/users/create/`, data);
   },

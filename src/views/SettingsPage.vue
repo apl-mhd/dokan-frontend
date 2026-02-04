@@ -63,7 +63,7 @@
                   <td>{{ u.phone || "—" }}</td>
                   <td>{{ u.first_name || "—" }}</td>
                   <td>{{ u.last_name || "—" }}</td>
-                  <td>
+                  <td @click.stop>
                     <span class="settings-badge" :class="u.is_active ? 'settings-badge--active' : 'settings-badge--inactive'">
                       {{ u.is_active ? "Active" : "Inactive" }}
                     </span>
@@ -129,6 +129,12 @@
                           <input id="user-active-switch" v-model="userModalForm.is_active" class="form-check-input" type="checkbox" />
                           <label class="form-check-label" for="user-active-switch">Active</label>
                         </div>
+                      </div>
+
+                      <div v-if="editingUserId !== profile.id" class="col-12">
+                        <label class="form-label">New password <span class="text-muted">(optional)</span></label>
+                        <input v-model="userModalForm.new_password" type="password" class="form-control" placeholder="Set a new password" />
+                        <div class="form-text">Leave blank to keep the current password.</div>
                       </div>
                     </div>
                   </form>
@@ -285,7 +291,15 @@ const { modalRef: userModalRef, show: showUserModal, hide: hideUserModal } = use
 const { modalRef: createUserModalRef, show: showCreateUserModal, hide: hideCreateUserModal } = useModal();
 
 const profile = reactive({ id: null, username: "", email: "", phone: "", first_name: "", last_name: "" });
-const userModalForm = reactive({ username: "", email: "", phone: "", first_name: "", last_name: "", is_active: true });
+const userModalForm = reactive({
+  username: "",
+  email: "",
+  phone: "",
+  first_name: "",
+  last_name: "",
+  is_active: true,
+  new_password: "",
+});
 const editingUserId = ref(null);
 
 const profileErrors = ref({});
@@ -378,6 +392,7 @@ function openUserModal(user = null) {
     userModalForm.first_name = user.first_name ?? "";
     userModalForm.last_name = user.last_name ?? "";
     userModalForm.is_active = user.is_active ?? true;
+    userModalForm.new_password = "";
   } else {
     editingUserId.value = profile.id;
     userModalForm.username = profile.username;
@@ -386,6 +401,7 @@ function openUserModal(user = null) {
     userModalForm.first_name = profile.first_name;
     userModalForm.last_name = profile.last_name;
     userModalForm.is_active = true;
+    userModalForm.new_password = "";
   }
   profileErrors.value = {};
   showUserModal();
@@ -451,6 +467,10 @@ async function saveUserFromModal() {
     if (isSelf) setProfile(res.data);
     if (!isSelf) {
       await profileApi.updateCompanyUser(editingUserId.value, { is_active: !!userModalForm.is_active });
+      if (userModalForm.new_password) {
+        await profileApi.setCompanyUserPassword(editingUserId.value, userModalForm.new_password);
+        userModalForm.new_password = "";
+      }
     }
     await loadCompanyUsers();
     profileSuccess.value = "User updated.";
