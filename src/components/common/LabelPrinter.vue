@@ -1,25 +1,22 @@
 <template>
   <div class="label-printer">
     <!-- Print Button -->
-    <button
-      v-if="showButton && hasItems"
-      :class="buttonClass"
-      @click="handlePrint"
-      :title="buttonTitle"
-      :disabled="!hasItems"
-    >
+    <button v-if="showButton && hasItems" :class="buttonClass" @click="handlePrint" :title="buttonTitle" :disabled="!hasItems">
       <i :class="buttonIcon"></i>
       <span v-if="showButtonText">{{ buttonText }}</span>
     </button>
 
     <!-- Label Content (hidden until print) -->
     <div class="label-content" ref="labelRef" :style="labelStyle">
-      <div
-        v-for="(item, index) in labelItems"
-        :key="index"
-        class="label-item"
-        :style="itemStyle"
-      >
+      <div v-for="(item, index) in labelItems" :key="index" class="label-item" :style="itemStyle">
+        <!-- Company Information -->
+        <div class="label-company">
+          <div class="company-name">{{ companyName }}</div>
+          <div v-if="companyPhone" class="company-contact">Ph: {{ companyPhone }}</div>
+          <div v-if="companyAddress" class="company-address">{{ companyAddress }}</div>
+          <div v-if="companyEmail" class="company-email">{{ companyEmail }}</div>
+        </div>
+
         <!-- Customer Information -->
         <div class="label-customer">
           <div class="customer-name">{{ customerName }}</div>
@@ -42,8 +39,40 @@
             <span class="product-price">{{ formatCurrency(item.unit_price) }}</span>
           </div>
           <div v-if="item.line_total" class="product-total-row">
-            <span class="product-total-label">Total:</span>
+            <span class="product-total-label">Line Total:</span>
             <span class="product-total">{{ formatCurrency(item.line_total) }}</span>
+          </div>
+        </div>
+
+        <!-- Invoice Summary (subtotal, tax, delivery, total, paid, due) -->
+        <div class="label-summary">
+          <div class="summary-row">
+            <span class="summary-label">Subtotal</span>
+            <span class="summary-value">{{ formatCurrency(sale.sub_total || 0) }}</span>
+          </div>
+          <div v-if="hasTax" class="summary-row">
+            <span class="summary-label">Tax</span>
+            <span class="summary-value">{{ formatCurrency(sale.tax || 0) }}</span>
+          </div>
+          <div v-if="hasDeliveryCharge" class="summary-row">
+            <span class="summary-label">Delivery</span>
+            <span class="summary-value">{{ formatCurrency(sale.delivery_charge || 0) }}</span>
+          </div>
+          <div v-if="hasDiscount" class="summary-row">
+            <span class="summary-label">Discount</span>
+            <span class="summary-value">- {{ formatCurrency(sale.discount || 0) }}</span>
+          </div>
+          <div class="summary-row total">
+            <span class="summary-label">Total</span>
+            <span class="summary-value">{{ formatCurrency(sale.grand_total || 0) }}</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Paid</span>
+            <span class="summary-value">{{ formatCurrency(sale.paid_amount || 0) }}</span>
+          </div>
+          <div class="summary-row due">
+            <span class="summary-label">Due</span>
+            <span class="summary-value">{{ formatCurrency(dueAmount) }}</span>
           </div>
         </div>
 
@@ -67,10 +96,10 @@ const props = defineProps({
     type: Object,
     required: true
   },
-  // Label width in mm (default 55mm)
+  // Label width in mm (Bangladesh common 80mm roll)
   labelWidth: {
     type: Number,
-    default: 55
+    default: 80
   },
   // Label height in mm (auto if not specified)
   labelHeight: {
@@ -116,6 +145,23 @@ const props = defineProps({
   productNameField: {
     type: String,
     default: 'product_name'
+  },
+  // Optional company information (overrides sale.company_* when set)
+  companyName: {
+    type: String,
+    default: ''
+  },
+  companyAddress: {
+    type: String,
+    default: ''
+  },
+  companyPhone: {
+    type: String,
+    default: ''
+  },
+  companyEmail: {
+    type: String,
+    default: ''
   }
 })
 
@@ -148,6 +194,22 @@ const invoiceNumber = computed(() => {
 const invoiceDate = computed(() => {
   return props.sale.invoice_date || null
 })
+
+const sale = computed(() => props.sale)
+
+// Company info: from props first, then from sale (API returns company_name, company_address, etc.)
+const companyName = computed(() =>
+  props.companyName || props.sale.company_name || 'Company'
+)
+const companyAddress = computed(() =>
+  props.companyAddress || props.sale.company_address || ''
+)
+const companyPhone = computed(() =>
+  props.companyPhone || props.sale.company_phone || ''
+)
+const companyEmail = computed(() =>
+  props.companyEmail || props.sale.company_email || ''
+)
 
 const labelItems = computed(() => {
   if (!props.sale.items || props.sale.items.length === 0) {
@@ -188,6 +250,16 @@ const formatQuantity = (quantity) => {
   }
   return quantity
 }
+
+const dueAmount = computed(() => {
+  const grand = parseFloat(sale.value?.grand_total ?? 0) || 0
+  const paid = parseFloat(sale.value?.paid_amount ?? 0) || 0
+  return parseFloat((grand - paid).toFixed(2))
+})
+
+const hasTax = computed(() => (parseFloat(sale.value?.tax ?? 0) || 0) > 0)
+const hasDeliveryCharge = computed(() => (parseFloat(sale.value?.delivery_charge ?? 0) || 0) > 0)
+const hasDiscount = computed(() => (parseFloat(sale.value?.discount ?? 0) || 0) > 0)
 
 const handlePrint = () => {
   if (!labelRef.value) {
@@ -230,95 +302,146 @@ const handlePrint = () => {
         }
         
         body {
-          font-family: Arial, sans-serif;
-          font-size: 10px;
-          line-height: 1.3;
-          color: #000;
-          background: white;
-          padding: 5mm;
+          font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+          font-size: 9px;
+          line-height: 1.4;
+          color: #1a202c;
+          background: #ffffff;
+          padding: 4mm;
         }
         
         .label-item {
           width: ${props.labelWidth - 10}mm;
           ${props.labelHeight ? `min-height: ${props.labelHeight - 10}mm;` : ''}
           padding: 3mm;
-          margin-bottom: 5mm;
-          border: 1px solid #000;
+          margin-bottom: 4mm;
+          border: 1px solid #cbd5e0;
+          border-radius: 2px;
+          background: #f9fafb;
           page-break-inside: avoid;
           break-inside: avoid;
         }
         
+        .label-company {
+          margin-bottom: 1.5mm;
+        }
+        
+        .company-name {
+          font-weight: 700;
+          font-size: 10px;
+          margin-bottom: 0.3mm;
+        }
+        
+        .company-contact,
+        .company-address,
+        .company-email {
+          font-size: 7.5px;
+          color: #4a5568;
+          margin-bottom: 0.4mm;
+        }
+        
         .label-customer {
-          margin-bottom: 2mm;
-          padding-bottom: 2mm;
-          border-bottom: 1px dashed #000;
+          margin-bottom: 1.5mm;
+          padding-bottom: 1.5mm;
+          border-bottom: 1px dashed #cbd5e0;
         }
         
         .customer-name {
-          font-weight: bold;
-          font-size: 11px;
-          margin-bottom: 1mm;
+          font-weight: 600;
+          font-size: 10px;
+          margin-bottom: 0.5mm;
         }
         
         .customer-phone,
         .customer-address {
-          font-size: 9px;
+          font-size: 8px;
           margin-bottom: 0.5mm;
           word-wrap: break-word;
+          color: #4a5568;
         }
         
         .label-divider {
           height: 1px;
-          background: #000;
-          margin: 2mm 0;
+          background: #e2e8f0;
+          margin: 1.5mm 0;
         }
         
         .label-product {
-          margin-bottom: 2mm;
+          margin-bottom: 1.5mm;
         }
         
         .product-name {
-          font-weight: bold;
-          font-size: 11px;
-          margin-bottom: 1mm;
+          font-weight: 600;
+          font-size: 10px;
+          margin-bottom: 0.5mm;
           word-wrap: break-word;
         }
         
         .product-details {
-          font-size: 9px;
-          margin-bottom: 1mm;
+          font-size: 8px;
+          margin-bottom: 0.8mm;
+          color: #4a5568;
         }
         
         .product-qty {
-          font-weight: bold;
-          margin-right: 2mm;
+          font-weight: 600;
+          margin-right: 1.5mm;
         }
         
         .product-unit {
-          color: #666;
+          color: #718096;
         }
         
         .product-price-row,
         .product-total-row {
           display: flex;
           justify-content: space-between;
-          font-size: 9px;
+          font-size: 8px;
           margin-bottom: 0.5mm;
         }
         
         .product-total-row {
-          font-weight: bold;
-          margin-top: 1mm;
-          padding-top: 1mm;
-          border-top: 1px dashed #000;
+          font-weight: 600;
+          margin-top: 0.8mm;
+          padding-top: 0.8mm;
+          border-top: 1px dashed #cbd5e0;
+        }
+        
+        .label-summary {
+          margin-top: 1.5mm;
+          padding-top: 1.5mm;
+          border-top: 1px dashed #e2e8f0;
+          font-size: 8px;
+        }
+        
+        .summary-row {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 0.4mm;
+        }
+        
+        .summary-label {
+          color: #4a5568;
+        }
+        
+        .summary-value {
+          font-weight: 600;
+        }
+        
+        .summary-row.total .summary-value {
+          font-weight: 700;
+        }
+        
+        .summary-row.due .summary-value {
+          color: #c53030;
         }
         
         .label-invoice {
-          margin-top: 2mm;
-          padding-top: 2mm;
-          border-top: 1px dashed #000;
-          font-size: 8px;
-          color: #666;
+          margin-top: 1.5mm;
+          padding-top: 1.5mm;
+          border-top: 1px dashed #e2e8f0;
+          font-size: 7.5px;
+          color: #718096;
         }
         
         .invoice-number,
@@ -376,7 +499,7 @@ const handlePrint = () => {
   .label-printer {
     display: block;
   }
-  
+
   .label-content {
     display: block;
   }
