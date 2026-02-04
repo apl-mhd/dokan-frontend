@@ -137,6 +137,7 @@
                       <tr>
                         <th>#</th>
                         <th>Product</th>
+                        <th>SKU</th>
                         <th>Quantity</th>
                         <th>Unit</th>
                         <th>Unit Price</th>
@@ -147,42 +148,43 @@
                       <tr v-for="(item, index) in selectedInvoice?.items || []" :key="index">
                         <td>{{ index + 1 }}</td>
                         <td>{{ getProductName(item.product) }}</td>
+                        <td>{{ getProductSku(item.product) }}</td>
                         <td>{{ item.quantity }}</td>
                         <td>{{ item.unit_name || getUnitName(item.unit) }}</td>
                         <td>{{ formatCurrency(item.unit_price) }}</td>
                         <td><strong>{{ formatCurrency(item.line_total) }}</strong></td>
                       </tr>
                       <tr v-if="!selectedInvoice?.items || selectedInvoice.items.length === 0">
-                        <td colspan="6" class="text-center text-muted">No items</td>
+                        <td colspan="7" class="text-center text-muted">No items</td>
                       </tr>
                     </tbody>
                     <tfoot v-if="selectedInvoice?.items && selectedInvoice.items.length > 0">
                       <tr>
-                        <td colspan="4" class="text-end"><strong>Sub Total:</strong></td>
+                        <td colspan="5" class="text-end"><strong>Sub Total:</strong></td>
                         <td colspan="2"><strong>{{ formatCurrency(selectedInvoice.sub_total || 0) }}</strong></td>
                       </tr>
                       <tr v-if="selectedInvoice.tax > 0">
-                        <td colspan="4" class="text-end"><strong>Tax:</strong></td>
+                        <td colspan="5" class="text-end"><strong>Tax:</strong></td>
                         <td colspan="2"><strong>{{ formatCurrency(selectedInvoice.tax || 0) }}</strong></td>
                       </tr>
                       <tr v-if="selectedInvoice.delivery_charge > 0">
-                        <td colspan="4" class="text-end"><strong>Delivery Charge:</strong></td>
+                        <td colspan="5" class="text-end"><strong>Delivery Charge:</strong></td>
                         <td colspan="2"><strong>{{ formatCurrency(selectedInvoice.delivery_charge || 0) }}</strong></td>
                       </tr>
                       <tr v-if="selectedInvoice.discount > 0">
-                        <td colspan="4" class="text-end"><strong>Discount:</strong></td>
+                        <td colspan="5" class="text-end"><strong>Discount:</strong></td>
                         <td colspan="2"><strong class="text-danger">-{{ formatCurrency(selectedInvoice.discount || 0) }}</strong></td>
                       </tr>
                       <tr class="table-success">
-                        <td colspan="4" class="text-end"><strong>Grand Total:</strong></td>
+                        <td colspan="5" class="text-end"><strong>Grand Total:</strong></td>
                         <td colspan="2"><strong>{{ formatCurrency(selectedInvoice.grand_total) }}</strong></td>
                       </tr>
                       <tr v-if="selectedInvoice.paid_amount > 0">
-                        <td colspan="4" class="text-end"><strong>Paid Amount:</strong></td>
+                        <td colspan="5" class="text-end"><strong>Paid Amount:</strong></td>
                         <td colspan="2"><strong class="text-success">{{ formatCurrency(selectedInvoice.paid_amount || 0) }}</strong></td>
                       </tr>
                       <tr v-if="selectedInvoice.paid_amount > 0">
-                        <td colspan="4" class="text-end"><strong>Balance:</strong></td>
+                        <td colspan="5" class="text-end"><strong>Balance:</strong></td>
                         <td colspan="2">
                           <strong :class="(selectedInvoice.grand_total - (selectedInvoice.paid_amount || 0)) > 0 ? 'text-danger' : 'text-success'">
                             {{ formatCurrency((selectedInvoice.grand_total || 0) - (selectedInvoice.paid_amount || 0)) }}
@@ -1191,6 +1193,14 @@ const updateUnitConversion = () => {
 const getProductName = (productId) => {
   const product = productStore.products.find(p => p.id === productId)
   return product ? product.name : `Product ${productId}`
+}
+
+const getProductSku = (productIdOrObj) => {
+  if (productIdOrObj && typeof productIdOrObj === 'object' && 'sku' in productIdOrObj) {
+    return productIdOrObj.sku || '-'
+  }
+  const product = productStore.products.find(p => p.id === productIdOrObj)
+  return product?.sku || '-'
 }
 
 const getUnitName = (unitId) => {
