@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { useAuthStore } from './stores/authStore'
+import LoadingSpinner from './components/common/LoadingSpinner.vue'
 
 const sidebarOpen = ref(true)
 const productsMenuOpen = ref(false)
@@ -368,7 +369,14 @@ const handleLogout = () => {
 
       <!-- Page Content -->
       <div class="container-fluid py-4" style="min-height: calc(100vh - 56px);">
-        <router-view />
+        <Suspense>
+          <router-view />
+          <template #fallback>
+            <div class="d-flex justify-content-center align-items-center py-5">
+              <LoadingSpinner />
+            </div>
+          </template>
+        </Suspense>
       </div>
 
     </main>

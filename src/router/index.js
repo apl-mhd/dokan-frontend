@@ -1,147 +1,127 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "../stores/authStore";
 
-import LoginPage from "../views/LoginPage.vue";
-import RegistrationPage from "../views/RegistrationPage.vue";
-import DashboardPage from "../views/DashboardPage.vue";
-import PurchasePage from "../views/PurchasePage.vue";
-import PurchaseReturnPage from "../views/PurchaseReturnPage.vue";
-import SalePage from "../views/SalePage.vue";
-import SalesManagementPage from "../views/SalesManagementPage.vue";
-import SaleReturnPage from "../views/SaleReturnPage.vue";
-import PaymentPage from "../views/PaymentPage.vue";
-import RefundPage from "../views/RefundPage.vue";
-import ProductPage from "../views/ProductPage.vue";
-import ProductManagementPage from "../views/ProductManagementPage.vue";
-import CategoryPage from "../views/CategoryPage.vue";
-import UnitPage from "../views/UnitPage.vue";
-import StockPage from "../views/StockPage.vue";
-import SupplierPage from "../views/SupplierPage.vue";
-import CustomerPage from "../views/CustomerPage.vue";
-import WarehousePage from "../views/WarehousePage.vue";
-import LedgerPage from "../views/LedgerPage.vue";
-import ExpensePage from "../views/ExpensePage.vue";
-import SettingsPage from "../views/SettingsPage.vue";
-
+// Lazy-load route components for faster initial load & reload
+// Only the current route's component + its stores are loaded on demand
 const routes = [
   {
     path: "/login",
     name: "Login",
-    component: LoginPage,
+    component: () => import("../views/LoginPage.vue"),
     meta: { requiresGuest: true },
   },
   {
     path: "/register",
     name: "Register",
-    component: RegistrationPage,
+    component: () => import("../views/RegistrationPage.vue"),
     meta: { requiresGuest: true },
   },
   {
     path: "/",
     name: "Dashboard",
-    component: DashboardPage,
+    component: () => import("../views/DashboardPage.vue"),
     meta: { requiresAuth: true },
   },
   {
     path: "/purchase",
     name: "Purchase",
-    component: PurchasePage,
+    component: () => import("../views/PurchasePage.vue"),
     meta: { requiresAuth: true },
   },
   {
     path: "/purchase-returns",
     name: "PurchaseReturns",
-    component: PurchaseReturnPage,
+    component: () => import("../views/PurchaseReturnPage.vue"),
     meta: { requiresAuth: true },
   },
   {
     path: "/sale",
     name: "Sale",
-    component: SalePage,
+    component: () => import("../views/SalePage.vue"),
     meta: { requiresAuth: true },
   },
   {
     path: "/sale-returns",
     name: "SaleReturns",
-    component: SaleReturnPage,
+    component: () => import("../views/SaleReturnPage.vue"),
     meta: { requiresAuth: true },
   },
   {
     path: "/product",
     name: "Product",
-    component: ProductPage,
+    component: () => import("../views/ProductPage.vue"),
     meta: { requiresAuth: true },
   },
   {
     path: "/products",
     name: "ProductManagement",
-    component: ProductManagementPage,
+    component: () => import("../views/ProductManagementPage.vue"),
     meta: { requiresAuth: true },
   },
   {
     path: "/categories",
     name: "Categories",
-    component: CategoryPage,
+    component: () => import("../views/CategoryPage.vue"),
     meta: { requiresAuth: true },
   },
   {
     path: "/units",
     name: "Units",
-    component: UnitPage,
+    component: () => import("../views/UnitPage.vue"),
     meta: { requiresAuth: true },
   },
   {
     path: "/stock",
     name: "Stock",
-    component: StockPage,
+    component: () => import("../views/StockPage.vue"),
     meta: { requiresAuth: true },
   },
   {
     path: "/supplier",
     name: "Supplier",
-    component: SupplierPage,
+    component: () => import("../views/SupplierPage.vue"),
     meta: { requiresAuth: true },
   },
   {
     path: "/customer",
     name: "Customer",
-    component: CustomerPage,
+    component: () => import("../views/CustomerPage.vue"),
     meta: { requiresAuth: true },
   },
   {
     path: "/warehouse",
     name: "Warehouse",
-    component: WarehousePage,
+    component: () => import("../views/WarehousePage.vue"),
     meta: { requiresAuth: true },
   },
   {
     path: "/payment",
     name: "Payment",
-    component: PaymentPage,
+    component: () => import("../views/PaymentPage.vue"),
     meta: { requiresAuth: true },
   },
   {
     path: "/refund",
     name: "Refund",
-    component: RefundPage,
+    component: () => import("../views/RefundPage.vue"),
     meta: { requiresAuth: true },
   },
   {
     path: "/ledger",
     name: "Ledger",
-    component: LedgerPage,
+    component: () => import("../views/LedgerPage.vue"),
     meta: { requiresAuth: true },
   },
   {
     path: "/expense",
     name: "Expense",
-    component: ExpensePage,
+    component: () => import("../views/ExpensePage.vue"),
     meta: { requiresAuth: true },
   },
   {
     path: "/settings",
     name: "Settings",
-    component: SettingsPage,
+    component: () => import("../views/SettingsPage.vue"),
     meta: { requiresAuth: true },
   },
 ];
