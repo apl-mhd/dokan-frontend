@@ -9,19 +9,23 @@
     <!-- Label Content (hidden until print) -->
     <div class="label-content" ref="labelRef" :style="labelStyle">
       <div v-for="(item, index) in labelItems" :key="index" class="label-item" :style="itemStyle">
-        <!-- Company Information -->
+        <!-- Company Information (from sale.company_* or props) -->
         <div class="label-company">
           <div class="company-name">{{ companyName }}</div>
-          <div v-if="companyPhone" class="company-contact">Ph: {{ companyPhone }}</div>
           <div v-if="companyAddress" class="company-address">{{ companyAddress }}</div>
+          <div v-if="companyPhone" class="company-contact">Ph: {{ companyPhone }}</div>
           <div v-if="companyEmail" class="company-email">{{ companyEmail }}</div>
+          <div v-if="companyWebsite" class="company-website">{{ companyWebsite }}</div>
         </div>
-
-        <!-- Customer Information -->
-        <div class="label-customer">
-          <div class="customer-name">{{ customerName }}</div>
-          <div v-if="customerPhone" class="customer-phone">{{ customerPhone }}</div>
-          <div v-if="customerAddress" class="customer-address">{{ customerAddress }}</div>
+        <div class="label-divider"></div>
+        <!-- Delivery To (Customer) -->
+        <div class="label-delivery-to">
+          <div class="delivery-to-label">Delivery To</div>
+          <div class="delivery-to-content">
+            <div class="customer-name">{{ customerName }}</div>
+            <div v-if="customerAddress" class="customer-address">{{ customerAddress }}</div>
+            <div v-if="customerPhone" class="customer-phone">Ph: {{ customerPhone }}</div>
+          </div>
         </div>
 
         <!-- Divider -->
@@ -162,6 +166,15 @@ const props = defineProps({
   companyEmail: {
     type: String,
     default: ''
+  },
+  companyWebsite: {
+    type: String,
+    default: ''
+  },
+  // Fallback company object (e.g. from profileApi.getCurrentCompany()); used when sale has no company_address/phone
+  company: {
+    type: Object,
+    default: null
   }
 })
 
@@ -197,19 +210,27 @@ const invoiceDate = computed(() => {
 
 const sale = computed(() => props.sale)
 
-// Company info: from props first, then from sale (API returns company_name, company_address, etc.)
-const companyName = computed(() =>
-  props.companyName || props.sale.company_name || 'Company'
-)
-const companyAddress = computed(() =>
-  props.companyAddress || props.sale.company_address || ''
-)
-const companyPhone = computed(() =>
-  props.companyPhone || props.sale.company_phone || ''
-)
-const companyEmail = computed(() =>
-  props.companyEmail || props.sale.company_email || ''
-)
+// Company info: props > sale (flat company_*) > sale.company (nested) > company prop (current company fallback)
+const companyName = computed(() => {
+  const v = props.companyName || props.sale?.company_name || props.sale?.company?.name || props.company?.name
+  return (v && String(v).trim()) || 'Company'
+})
+const companyAddress = computed(() => {
+  const v = props.companyAddress || props.sale?.company_address || props.sale?.company?.address || props.company?.address
+  return (v != null && v !== '') ? String(v).trim() : ''
+})
+const companyPhone = computed(() => {
+  const v = props.companyPhone || props.sale?.company_phone || props.sale?.company?.phone || props.company?.phone
+  return (v != null && v !== '') ? String(v).trim() : ''
+})
+const companyEmail = computed(() => {
+  const v = props.companyEmail || props.sale?.company_email || props.sale?.company?.email || props.company?.email
+  return (v != null && v !== '') ? String(v).trim() : ''
+})
+const companyWebsite = computed(() => {
+  const v = props.companyWebsite || props.sale?.company_website || props.sale?.company?.website || props.company?.website
+  return (v != null && v !== '') ? String(v).trim() : ''
+})
 
 const labelItems = computed(() => {
   if (!props.sale.items || props.sale.items.length === 0) {
@@ -334,30 +355,53 @@ const handlePrint = () => {
         
         .company-contact,
         .company-address,
-        .company-email {
+        .company-email,
+        .company-website {
           font-size: 7.5px;
           color: #4a5568;
           margin-bottom: 0.4mm;
         }
         
-        .label-customer {
+        .label-delivery-to {
           margin-bottom: 1.5mm;
-          padding-bottom: 1.5mm;
-          border-bottom: 1px dashed #cbd5e0;
+          padding: 1.5mm 2mm;
+          background: #f1f5f9;
+          border-left: 2px solid #1a365d;
+          border-radius: 0 2px 2px 0;
         }
         
-        .customer-name {
-          font-weight: 600;
+        .delivery-to-label {
+          font-size: 7.5px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          color: #1a365d;
+          margin-bottom: 0.8mm;
+        }
+        
+        .delivery-to-content {
+          font-size: 9px;
+          line-height: 1.35;
+        }
+        
+        .label-delivery-to .customer-name {
+          font-weight: 700;
           font-size: 10px;
-          margin-bottom: 0.5mm;
+          color: #1a202c;
+          margin-bottom: 0.4mm;
         }
         
-        .customer-phone,
-        .customer-address {
+        .label-delivery-to .customer-address,
+        .label-delivery-to .customer-phone {
           font-size: 8px;
-          margin-bottom: 0.5mm;
+          margin-bottom: 0.3mm;
           word-wrap: break-word;
           color: #4a5568;
+        }
+        
+        .label-delivery-to .customer-address:last-child,
+        .label-delivery-to .customer-phone:last-child {
+          margin-bottom: 0;
         }
         
         .label-divider {

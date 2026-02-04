@@ -53,7 +53,7 @@
               <button class="btn btn-sm btn-outline-info me-2" @click="handleView(invoice)" title="View">
                 <i class="bi bi-eye"></i>
               </button>
-              <LabelPrinter v-if="props.type === 'sale' || props.type === 'sale_return'" :sale="invoice" :show-button="true" :show-button-text="false" button-class="btn btn-sm btn-outline-warning me-2" button-icon="bi bi-printer" button-title="Print Label" />
+              <LabelPrinter v-if="props.type === 'sale' || props.type === 'sale_return'" :sale="invoice" :company="currentCompany" :show-button="true" :show-button-text="false" button-class="btn btn-sm btn-outline-warning me-2" button-icon="bi bi-printer" button-title="Print Label" />
               <button v-if="invoice.status !== config.finalStatus" class="btn btn-sm btn-outline-primary me-2" @click="handleEdit(invoice)" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
@@ -324,7 +324,7 @@
             </div>
             <div class="modal-footer">
               <div class="me-auto">
-                <LabelPrinter v-if="isViewMode && (props.type === 'sale' || props.type === 'sale_return') && selectedInvoice" :sale="selectedInvoice" :show-button="true" :show-button-text="true" button-class="btn btn-warning" button-icon="bi bi-printer me-2" button-text="Print Labels" button-title="Print Labels for All Items" />
+                <LabelPrinter v-if="isViewMode && (props.type === 'sale' || props.type === 'sale_return') && selectedInvoice" :sale="selectedInvoice" :company="currentCompany" :show-button="true" :show-button-text="true" button-class="btn btn-warning" button-icon="bi bi-printer me-2" button-text="Print Labels" button-title="Print Labels for All Items" />
               </div>
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ isViewMode ? 'Close' : 'Cancel' }}</button>
               <button v-if="!isViewMode" type="button" class="btn btn-primary" @click="handleSave" :disabled="formData.items.length === 0">
@@ -729,6 +729,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import api from '../../utility/axios'
+import { profileApi } from '../../api/profile.api'
 import { useInvoicePage } from '../../composables/useInvoicePage'
 import { useModal } from '../../composables/useModal'
 import { useFormatter } from '../../composables/useFormatter'
@@ -778,6 +779,7 @@ const paymentModalRef = ref(null)
 const paymentInvoice = ref(null)
 const paymentAmount = ref(0)
 const savingPayment = ref(false)
+const currentCompany = ref(null)
 
 // Computed: Available status options based on current status
 const availableStatusOptions = computed(() => {
